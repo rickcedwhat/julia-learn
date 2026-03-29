@@ -68,6 +68,25 @@ Each should print a version number (like `git version 2.43.0`). If you see an er
 
 </details>
 
+### Fix: "Running scripts is disabled on this system"
+
+If you see this error when running commands, Windows is blocking scripts by default. To fix it:
+
+1. Right-click the **Start menu** → click **Terminal (Admin)** or **PowerShell (Admin)**
+2. Paste this command and press Enter:
+   ```powershell
+   Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+   ```
+3. Type `Y` and press Enter
+4. Close and reopen Antigravity — scripts should work now
+
+<details>
+<summary>💡 Alternative: use Command Prompt instead</summary>
+
+If you don't want to change the policy, you can switch Antigravity's terminal to **Command Prompt (cmd)** which doesn't have this restriction. Look for a dropdown near the `+` button in the terminal panel and select `cmd`.
+
+</details>
+
 ---
 
 ## 2. Getting Set Up with GitHub
