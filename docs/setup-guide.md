@@ -173,33 +173,84 @@ An API key is like a password that lets your app talk to an external service (in
 
 ---
 
-## 5. Running the "Hello World"
+## 5. Understanding Scripts (Your Project's Shortcuts)
 
-In your Antigravity terminal, run:
+Before we run anything, let's learn **how** to run things.
 
-```bash
-npm install
-npm run dev
+Open `package.json` in Antigravity (click it in the sidebar). You'll see a section called `"scripts"`:
+
+```json
+"scripts": {
+  "docs:dev": "vitepress dev docs",
+  "docs:build": "vitepress build docs",
+  "docs:preview": "vitepress preview docs"
+}
 ```
 
-This will start a local server. If you see a blank screen with "Nutrition App," you've successfully connected the brain to the body!
+Each script is a **shortcut**. Instead of typing the long command on the right, you type the short name on the left with `npm run` in front of it. For example:
+
+- `npm run docs:dev` → runs `vitepress dev docs` behind the scenes
+- You don't need to memorize the long version — just the shortcut name!
+
+### Try it: See what scripts are available
+
+In the Antigravity terminal (press `` Ctrl + ` `` to open it), type:
+
+```bash
+npm run
+```
+
+This lists every shortcut the project knows. Right now you'll see three `docs:` scripts.
+
+::: warning Important
+If you run a script that doesn't exist (like `npm run dev`), you'll get an error: **"Missing script: dev"**. That's not a bug — it just means that shortcut hasn't been created yet. Run `npm run` (with nothing after it) to see which ones are available.
+:::
+
+### What each script does
+
+| Script | What it does |
+|--------|-------------|
+| `npm run docs:dev` | Starts a live preview of this Learning Portal |
+| `npm run docs:build` | Creates the final version of the site for publishing |
+| `npm run docs:preview` | Previews the built site before publishing |
+
+::: tip
+As you build the Nutrition Label app later, you'll add new scripts like `dev`, `build`, and `test` for the app itself. The AI will help you set those up when the time comes!
+:::
+
+<details>
+<summary>💡 Why not just type the long command?</summary>
+
+You *could* type `vitepress dev docs` directly, but scripts have some benefits:
+
+1. **Shorter** — easier to remember and type
+2. **Standardized** — every project uses `npm run` + a name, so once you learn the pattern, it works everywhere
+3. **Documented** — anyone can run `npm run` to see what's available in a project they've never seen before
+
+</details>
 
 ---
 
-## 6. Your First "AI Instruction"
+## 6. Viewing the Learning Portal
 
-Open the Antigravity chat and type:
-
-> "Look at the `APP_SPEC.md` file. I want to build the basic layout for the 'Label Library' page. Can you show me a mock-up using React and Tailwind CSS?"
-
----
-
-## 7. Viewing the Learning Portal
-
-To launch this documentation site locally:
+Let's put those scripts to use! In the Antigravity terminal, run:
 
 ```bash
 npm run docs:dev
 ```
 
-Then open the link shown in your terminal. You can navigate through the modules in the sidebar on the left.
+After a moment, you'll see a link like `http://localhost:5173/`. Click it or paste it in your browser — **you're now running this site on your own computer!** 🎉
+
+Any changes you make to files in the `docs/` folder will instantly show up in your browser.
+
+::: tip
+Press `Ctrl + C` in the terminal to stop the server when you're done.
+:::
+
+---
+
+## 7. Your First "AI Instruction"
+
+Open the Antigravity chat and type:
+
+> "Look at the `APP_SPEC.md` file. I want to build the basic layout for the 'Label Library' page. Can you show me a mock-up using React and Tailwind CSS?"
