@@ -17,9 +17,10 @@ Check the [Glossary](/glossary) any time you see an unfamiliar word.
 3. Open Antigravity once it's installed.
 
 You'll see three main areas:
-- **The Chat** (left side) — Where you describe features in plain English and the AI helps you build them.
+- **The Panel** (left side) — Your file browser and other tools.
 - **The Code** (center) — Where files are displayed and edited.
-- **The Terminal** (bottom panel) — Where you type commands to run things. **We'll use this terminal for all commands going forward.**
+- **The Chat** (right side) — Where you describe features in plain English and the AI helps you build them.
+- **The Terminal** (bottom, if you open it) — Where you type commands to run things.
 
 ::: tip
 To open the terminal inside Antigravity, press `` Ctrl + ` `` (that's the backtick key, above Tab on your keyboard).
