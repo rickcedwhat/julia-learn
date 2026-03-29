@@ -8,21 +8,79 @@ Check the [Glossary](/glossary) any time you see an unfamiliar word.
 
 ---
 
-## 0. Getting Set Up with GitHub
+## 0. Download Antigravity
+
+[Antigravity](/glossary#antigravity) is your **AI-powered code editor** — it's where you'll write code, run commands, and chat with AI. Everything happens inside this one app.
+
+1. Go to the Antigravity download page and grab the **Windows** installer.
+2. Install it like any other app (double-click the installer, follow the prompts).
+3. Open Antigravity once it's installed.
+
+You'll see three main areas:
+- **The Chat** (left side) — Where you describe features in plain English and the AI helps you build them.
+- **The Code** (center) — Where files are displayed and edited.
+- **The Terminal** (bottom panel) — Where you type commands to run things. **We'll use this terminal for all commands going forward.**
+
+::: tip
+To open the terminal inside Antigravity, press `` Ctrl + ` `` (that's the backtick key, above Tab on your keyboard).
+:::
+
+<details>
+<summary>💡 How is this different from VS Code?</summary>
+
+VS Code is a traditional code editor — you type everything yourself and use extensions for extra features. Antigravity has AI built in as a first-class citizen. You describe what you want in plain English, and the AI helps write, debug, and test the code alongside you.
+
+</details>
+
+---
+
+## 1. Install Git & Node.js
+
+Before we can download the project, we need two tools:
+
+### Install Git
+[Git](/glossary#git) is the tool that tracks changes to your code and lets you download projects from [GitHub](/glossary#github).
+
+1. Go to [git-scm.com/downloads/win](https://git-scm.com/downloads/win)
+2. Download the installer and run it
+3. Click **Next** through all the options — the defaults are fine
+
+### Install Node.js
+[Node.js](/glossary#nodejs) lets you run JavaScript tools like the Learning Portal.
+
+1. Go to [nodejs.org](https://nodejs.org/)
+2. Download the **LTS** version (the big green button)
+3. Run the installer and click **Next** through the prompts
+
+<details>
+<summary>💡 How do I know these installed correctly?</summary>
+
+After installing, close and reopen Antigravity, then type these in the terminal (one at a time):
+
+```bash
+git --version
+node --version
+npm --version
+```
+
+Each should print a version number (like `git version 2.43.0`). If you see an error instead, try restarting your computer and running the commands again.
+
+</details>
+
+---
+
+## 2. Getting Set Up with GitHub
 
 The project lives online on a website called **[GitHub](/glossary#github)**. You'll download ("[clone](/glossary#clone)") it to your computer so you have your own copy to work with.
 
 ### Step 1: Create a GitHub Account
 If you don't already have one, go to [github.com](https://github.com) and sign up — it's free. This is where developers store and share code.
 
-### Step 2: Install Git
-[Git](/glossary#git) is the tool that lets you download the project. Install it here: [git-scm.com/downloads](https://git-scm.com/downloads). Pick the option for your computer (Mac or Windows) and follow the installer.
-
-### Step 3: Download the Project
-Open your **[Terminal](/glossary#terminal)** (on Mac: search "Terminal" in Spotlight) and paste these commands one at a time, pressing Enter after each:
+### Step 2: Download the Project
+Open the **terminal inside Antigravity** and paste these commands one at a time, pressing Enter after each:
 
 ```bash
-cd ~/Documents
+cd %USERPROFILE%\Documents
 git clone https://github.com/rickcedwhat/julia-learn.git
 cd julia-learn
 npm install
@@ -30,12 +88,16 @@ npm install
 
 That's it! You now have the full project on your computer.
 
+::: tip
+After running these commands, go to **File → Open Folder** in Antigravity and open the `julia-learn` folder from your Documents. This lets Antigravity see all your project files.
+:::
+
 <details>
 <summary>💡 Wait — what did those commands do?</summary>
 
 | Command | What it does |
 |---------|-------------|
-| `cd ~/Documents` | Moves you into your Documents folder |
+| `cd %USERPROFILE%\Documents` | Moves you into your Documents folder |
 | `git clone https://...` | Downloads the entire project from GitHub to your computer |
 | `cd julia-learn` | Moves you into the project folder you just downloaded |
 | `npm install` | Installs all the tools the project needs to run |
@@ -48,12 +110,12 @@ That's it! You now have the full project on your computer.
 
 ---
 
-## 1. Understanding the Project Structure
+## 3. Understanding the Project Structure
 
 Here's what you'll see after cloning:
 
 ```
-julia/
+julia-learn/
 ├── app/              ← 🔧 YOUR workspace — build the app here
 │   └── README.md
 ├── docs/             ← 📚 Learning Portal (this site!)
@@ -83,23 +145,7 @@ julia/
 
 ---
 
-## 2. Understanding Antigravity
-
-[Antigravity](/glossary#antigravity) is your **AI-Native [IDE](/glossary#ide-integrated-development-environment).** Unlike old editors where you type everything, here you **collaborate.**
-- **The Chat:** Where you describe features.
-- **The Code:** Where the AI writes the React/TypeScript.
-- **The Terminal:** Where we run the app to see if it works.
-
-<details>
-<summary>💡 How is this different from VS Code?</summary>
-
-VS Code is a traditional code editor — you type everything yourself and use extensions for extra features. Antigravity has AI built in as a first-class citizen. You describe what you want in plain English, and the AI helps write, debug, and test the code alongside you.
-
-</details>
-
----
-
-## 3. Getting Your Gemini API Key
+## 4. Getting Your Gemini API Key
 
 The "Brain" of our app is Google's [Gemini](/glossary#gemini). It needs a "Key" (like a password) to work.
 
@@ -125,7 +171,7 @@ An API key is like a password that lets your app talk to an external service (in
 
 ---
 
-## 4. Running the "Hello World"
+## 5. Running the "Hello World"
 
 In your Antigravity terminal, run:
 
@@ -138,7 +184,7 @@ This will start a local server. If you see a blank screen with "Nutrition App," 
 
 ---
 
-## 5. Your First "AI Instruction"
+## 6. Your First "AI Instruction"
 
 Open the Antigravity chat and type:
 
@@ -146,7 +192,7 @@ Open the Antigravity chat and type:
 
 ---
 
-## 6. Viewing the Learning Portal
+## 7. Viewing the Learning Portal
 
 To launch this documentation site locally:
 

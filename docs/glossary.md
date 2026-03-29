@@ -138,7 +138,7 @@ Hidden instructions given to an AI before the user starts chatting. It sets the 
 ## T
 
 ### Terminal
-The application on your computer for typing commands. On Mac, search for "Terminal" in Spotlight. It's how you'll run the project, install tools, and interact with Git.
+A text-based interface for typing commands. In Antigravity, the terminal is built right in — press `` Ctrl + ` `` to open it. You'll use it to install tools, run the app, and interact with Git.
 
 ### TypeScript
 A version of JavaScript with added safety features — it catches mistakes before you run your code, like a spell-checker for programming. Most modern React projects use TypeScript. [Learn more](https://www.typescriptlang.org/)

@@ -12,7 +12,7 @@ Follow the [Setup Guide](/setup-guide) to connect Antigravity to the Gemini API.
 
 Up until now, you may have been viewing this Learning Portal on your instructor's computer. Let's get your **own** version running!
 
-Every project has a file called [`package.json`](/glossary#package) that lists commands (called "scripts") you can run. Open your [Terminal](/glossary#terminal) and try these:
+Every project has a file called [`package.json`](/glossary#package) that lists commands (called "scripts") you can run. Open the **terminal inside Antigravity** (press `` Ctrl + ` ``) and try these:
 
 ### See what scripts are available
 ```bash
@@ -31,7 +31,7 @@ After a moment, you'll see a link like `http://localhost:5173/`. Open it in your
 Any changes you make to the files in the `docs/` folder will instantly show up in your browser.
 
 ::: tip
-Press `Ctrl + C` in the terminal to stop the server when you're done.
+Press `Ctrl + C` in the Antigravity terminal to stop the server when you're done.
 :::
 
 <details>
