@@ -147,33 +147,7 @@ julia-learn/
 
 ---
 
-## 4. Getting Your Gemini API Key
-
-The "Brain" of our app is Google's [Gemini](/glossary#gemini). It needs a "Key" (like a password) to work.
-
-1. Go to the [Google AI Studio](https://aistudio.google.com/).
-2. Log in with the shared account.
-3. Click on **"Get API Key"** on the left sidebar.
-4. Copy the key (it looks like a long string of random letters).
-5. **CRITICAL:** Create a file in your project called `.env`. Paste the key there:
-   ```
-   GEMINI_API_KEY=your_key_here
-   ```
-
-::: warning
-Never share your `.env` file or upload it to GitHub! The `.gitignore` is already configured to keep it safe.
-:::
-
-<details>
-<summary>💡 What is an API Key?</summary>
-
-An API key is like a password that lets your app talk to an external service (in this case, Google's Gemini AI). Each key is unique to you. If someone else gets your key, they could use up your credits or access your data — that's why we keep it in `.env` and never commit it to Git.
-
-</details>
-
----
-
-## 5. Understanding Scripts (Your Project's Shortcuts)
+## 4. Understanding Scripts (Your Project's Shortcuts)
 
 Before we run anything, let's learn **how** to run things.
 
@@ -231,7 +205,7 @@ You *could* type `vitepress dev docs` directly, but scripts have some benefits:
 
 ---
 
-## 6. Viewing the Learning Portal
+## 5. Viewing the Learning Portal
 
 Let's put those scripts to use! In the Antigravity terminal, run:
 
@@ -249,7 +223,7 @@ Press `Ctrl + C` in the terminal to stop the server when you're done.
 
 ---
 
-## 7. Your First "AI Instruction"
+## 6. Your First "AI Instruction"
 
 Open the Antigravity chat and type:
 

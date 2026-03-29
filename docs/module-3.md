@@ -5,6 +5,30 @@
 ## Objective
 Keep the [LLM](/glossary#llm-large-language-model) from "[hallucinating](/glossary#hallucination)" (making up fake calories).
 
+## Before You Start: Get Your Gemini API Key
+
+The "Brain" of our app is Google's [Gemini](/glossary#gemini). Before we can start prompting the AI, it needs an [API Key](/glossary#api-key) — like a password that lets your app connect to it.
+
+1. Go to [Google AI Studio](https://aistudio.google.com/).
+2. Log in with the shared account.
+3. Click on **"Get API Key"** on the left sidebar.
+4. Copy the key (it looks like a long string of random letters).
+5. In Antigravity, create a new file in your project called `.env` and paste the key there:
+   ```
+   GEMINI_API_KEY=your_key_here
+   ```
+
+::: warning
+Never share your `.env` file or upload it to GitHub! The `.gitignore` is already set up to keep it safe.
+:::
+
+<details>
+<summary>💡 What is an API Key?</summary>
+
+An [API](/glossary#api-application-programming-interface) key is like a password that lets your app talk to an external service (in this case, Google's Gemini AI). Each key is unique to you. If someone else gets your key, they could use up your credits or access your data — that's why we keep it in `.env` and never commit it to Git.
+
+</details>
+
 ## Task
 Practice "[Few-Shot Prompting](/glossary#few-shot-prompting)." We will give the AI 3 examples of a label and see if it can do the 4th one perfectly.
 
