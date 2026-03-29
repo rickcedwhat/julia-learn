@@ -10,3 +10,6 @@ Read the `APP_SPEC.md`. We will "Interrogate the Spec." If you were testing this
 
 ## Lesson
 In AI dev, the "Requirement Doc" IS the code. If the spec is fuzzy, the app will be buggy.
+
+---
+*See the [Glossary](/glossary) for unfamiliar terms.*

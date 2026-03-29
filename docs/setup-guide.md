@@ -2,20 +2,24 @@
 
 Before we write a single line of code, we need to set up your "Command Center."
 
+::: tip 📖 New to a term?
+Check the [Glossary](/glossary) any time you see an unfamiliar word.
+:::
+
 ---
 
 ## 0. Getting Set Up with GitHub
 
-The project lives online on a website called **GitHub**. You'll download ("clone") it to your computer so you have your own copy to work with.
+The project lives online on a website called **[GitHub](/glossary#github)**. You'll download ("[clone](/glossary#clone)") it to your computer so you have your own copy to work with.
 
 ### Step 1: Create a GitHub Account
 If you don't already have one, go to [github.com](https://github.com) and sign up — it's free. This is where developers store and share code.
 
 ### Step 2: Install Git
-Git is the tool that lets you download the project. Install it here: [git-scm.com/downloads](https://git-scm.com/downloads). Pick the option for your computer (Mac or Windows) and follow the installer.
+[Git](/glossary#git) is the tool that lets you download the project. Install it here: [git-scm.com/downloads](https://git-scm.com/downloads). Pick the option for your computer (Mac or Windows) and follow the installer.
 
 ### Step 3: Download the Project
-Open your **Terminal** (on Mac: search "Terminal" in Spotlight) and paste these commands one at a time, pressing Enter after each:
+Open your **[Terminal](/glossary#terminal)** (on Mac: search "Terminal" in Spotlight) and paste these commands one at a time, pressing Enter after each:
 
 ```bash
 cd ~/Documents
@@ -64,9 +68,9 @@ julia/
 
 | Folder | Purpose |
 |--------|---------|
-| `app/` | Where you write your Nutrition Label app code (React, TypeScript, etc.) |
+| `app/` | Where you write your Nutrition Label app code ([React](/glossary#react), [TypeScript](/glossary#typescript), etc.) |
 | `docs/` | The Learning Portal — curriculum, guides, and module pages |
-| `docs/.vitepress/` | VitePress config that controls sidebar, nav, and site settings |
+| `docs/.vitepress/` | [VitePress](/glossary#vitepress) config that controls sidebar, nav, and site settings |
 
 <details>
 <summary>💡 What are package.json and .gitignore?</summary>
@@ -81,7 +85,7 @@ julia/
 
 ## 2. Understanding Antigravity
 
-Antigravity is your **AI-Native Editor.** Unlike old editors where you type everything, here you **collaborate.**
+[Antigravity](/glossary#antigravity) is your **AI-Native [IDE](/glossary#ide-integrated-development-environment).** Unlike old editors where you type everything, here you **collaborate.**
 - **The Chat:** Where you describe features.
 - **The Code:** Where the AI writes the React/TypeScript.
 - **The Terminal:** Where we run the app to see if it works.
@@ -97,7 +101,7 @@ VS Code is a traditional code editor — you type everything yourself and use ex
 
 ## 3. Getting Your Gemini API Key
 
-The "Brain" of our app is Google's Gemini. It needs a "Key" (like a password) to work.
+The "Brain" of our app is Google's [Gemini](/glossary#gemini). It needs a "Key" (like a password) to work.
 
 1. Go to the [Google AI Studio](https://aistudio.google.com/).
 2. Log in with the shared account.

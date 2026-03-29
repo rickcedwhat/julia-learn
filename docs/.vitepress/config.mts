@@ -9,6 +9,7 @@ export default defineConfig({
       { text: 'Home', link: '/' },
       { text: 'Curriculum', link: '/curriculum' },
       { text: 'Setup Guide', link: '/setup-guide' },
+      { text: 'Glossary', link: '/glossary' },
     ],
 
     sidebar: [
@@ -18,6 +19,7 @@ export default defineConfig({
           { text: 'Home', link: '/' },
           { text: 'Full Curriculum', link: '/curriculum' },
           { text: 'Setup Guide', link: '/setup-guide' },
+          { text: 'Glossary', link: '/glossary' },
         ],
       },
       {
@@ -33,7 +35,7 @@ export default defineConfig({
     ],
 
     socialLinks: [
-      { icon: 'github', link: 'https://github.com' },
+      { icon: 'github', link: 'https://github.com/rickcedwhat/julia-learn' },
     ],
   },
 
