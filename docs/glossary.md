@@ -2,6 +2,10 @@
 
 A quick-reference guide for terms you'll encounter throughout the bootcamp. Don't worry if these feel unfamiliar — by the end, they'll be second nature.
 
+::: tip 💬 Have questions about a term?
+Ask Antigravity to define something and it will add it to this glossary for you!
+:::
+
 ---
 
 ## A
