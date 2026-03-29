@@ -6,7 +6,7 @@
 Understand that an AI is only as good as the instructions it receives.
 
 ## Task
-Read the `APP_SPEC.md`. We will "Interrogate the Spec." If you were testing this, what's the first thing that would break?
+Read the [App Spec](/app-spec). We will "Interrogate the Spec." If you were testing this, what's the first thing that would break?
 
 ## Lesson
 In AI dev, the "Requirement Doc" IS the code. If the spec is fuzzy, the app will be buggy.

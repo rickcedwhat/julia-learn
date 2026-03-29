@@ -17,6 +17,7 @@ export default defineConfig({
         text: 'Getting Started',
         items: [
           { text: 'Home', link: '/' },
+          { text: 'App Spec', link: '/app-spec' },
           { text: 'Full Curriculum', link: '/curriculum' },
           { text: 'Setup Guide', link: '/setup-guide' },
           { text: 'Glossary', link: '/glossary' },

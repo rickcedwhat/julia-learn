@@ -142,6 +142,7 @@ julia-learn/
 │   └── README.md
 ├── docs/             ← 📚 Learning Portal (this site!)
 │   ├── index.md
+│   ├── app-spec.md
 │   ├── curriculum.md
 │   ├── setup-guide.md
 │   ├── module-1.md … module-5.md
@@ -243,11 +244,23 @@ Press `Ctrl + C` in the terminal to stop the server when you're done.
 
 ---
 
-## 6. Your First "AI Instruction"
+## 6. Review the App Spec
 
-Open the Antigravity chat and type:
+Before writing any code, let's understand **what we're building**.
 
-> "Look at the `APP_SPEC.md` file. I want to build the basic layout for the 'Label Library' page. Can you show me a mock-up using React and Tailwind CSS?"
+Open the [App Spec](/app-spec) page and read through it. It describes the Nutrition Label app — what it does, how the data model works, and what tech we'll use.
+
+Then open the Antigravity chat and ask:
+
+> "Read the App Spec page in docs/app-spec.md. Give me a summary report: what is this app, what are the main features, and what tech will we use to build it? Is there anything you think is unclear or missing?"
+
+The AI will break it all down for you. After reading the report, you can ask follow-up questions like:
+
+> "What would be the hardest part to build?"
+
+> "Is there anything you'd change about this spec?"
+
+This is your chance to **understand and shape the project before diving in**. If something doesn't make sense or you want to adjust the plan, just tell the AI — you can even ask it to update the spec for you.
 
 ---
 
@@ -292,4 +305,36 @@ You can also type in the Antigravity chat: *"Save my changes to GitHub with the 
 
 ::: info Coming later
 Right now you're pushing directly to `main` — the simplest workflow. In a future module, you'll learn about **branches** and **pull requests**, which let you organize changes and get feedback before merging. Don't worry about that yet!
+:::
+
+---
+
+## 8. Getting the Latest Updates
+
+Your instructor may update the curriculum, add new modules, or fix things in the docs. When that happens, you'll want to pull those changes into your copy.
+
+Just type this in the Antigravity chat:
+
+> "Pull the latest changes from the main repo at https://github.com/rickcedwhat/julia-learn.git and merge them into my project. If there are any conflicts in the docs/ folder, use the version from the main repo."
+
+<details>
+<summary>💡 Want to do it manually?</summary>
+
+If you haven't set up the instructor's repo as a "remote" yet:
+```bash
+git remote add upstream https://github.com/rickcedwhat/julia-learn.git
+```
+
+Then whenever you want the latest updates:
+```bash
+git fetch upstream
+git merge upstream/main
+```
+
+If there are merge conflicts, the AI can help you resolve them — just ask!
+
+</details>
+
+::: tip
+It's a good idea to **save your work first** (Step 7) before pulling updates, so nothing gets lost.
 :::
