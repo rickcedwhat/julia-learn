@@ -77,7 +77,16 @@ The project lives online on a website called **[GitHub](/glossary#github)**. You
 If you don't already have one, go to [github.com](https://github.com) and sign up — it's free. This is where developers store and share code.
 
 ### Step 2: Download the Project
-Open the **terminal inside Antigravity** and paste these commands one at a time, pressing Enter after each:
+Open Antigravity and type this in the **chat** (not the terminal):
+
+> "Clone the repo at https://github.com/rickcedwhat/julia-learn.git into my Documents folder, then open it and install the dependencies."
+
+The AI will run the commands for you! Once it's done, you'll see all the project files in the sidebar.
+
+<details>
+<summary>💡 Want to do it manually instead?</summary>
+
+If you'd rather type the commands yourself, open the terminal inside Antigravity (press `` Ctrl + ` ``) and run these one at a time:
 
 ```bash
 cd %USERPROFILE%\Documents
@@ -86,25 +95,18 @@ cd julia-learn
 npm install
 ```
 
-That's it! You now have the full project on your computer.
+Then go to **File → Open Folder** and open the `julia-learn` folder from your Documents.
 
-::: tip
-After running these commands, go to **File → Open Folder** in Antigravity and open the `julia-learn` folder from your Documents. This lets Antigravity see all your project files.
-:::
+</details>
 
 <details>
-<summary>💡 Wait — what did those commands do?</summary>
+<summary>💡 What just happened?</summary>
 
-| Command | What it does |
-|---------|-------------|
-| `cd %USERPROFILE%\Documents` | Moves you into your Documents folder |
-| `git clone https://...` | Downloads the entire project from GitHub to your computer |
-| `cd julia-learn` | Moves you into the project folder you just downloaded |
-| `npm install` | Installs all the tools the project needs to run |
-
-**Git** is like "Track Changes" in Google Docs, but for code — it tracks every change so you can undo mistakes.
-
-**GitHub** is the website that stores the project online so you (and others) can access it from anywhere.
+| What | Why |
+|------|-----|
+| **Clone** | Downloaded the entire project from GitHub to your computer |
+| **Open folder** | Let Antigravity see all the files so you can browse and edit them |
+| **npm install** | Installed all the tools the project needs to run |
 
 </details>
 
