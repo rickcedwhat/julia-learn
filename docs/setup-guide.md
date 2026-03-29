@@ -248,3 +248,48 @@ Press `Ctrl + C` in the terminal to stop the server when you're done.
 Open the Antigravity chat and type:
 
 > "Look at the `APP_SPEC.md` file. I want to build the basic layout for the 'Label Library' page. Can you show me a mock-up using React and Tailwind CSS?"
+
+---
+
+## 7. Saving Your Work
+
+Whenever you've made changes you want to keep, you need to **save them to GitHub** so they're backed up and your instructor can see your progress.
+
+In the Antigravity terminal, run these three commands:
+
+```bash
+git add -A
+git commit -m "describe what you changed"
+git push
+```
+
+For example, after finishing Module 1 you might type:
+
+```bash
+git add -A
+git commit -m "completed module 1 exercises"
+git push
+```
+
+That's it! Your changes are now saved on GitHub.
+
+<details>
+<summary>💡 What do these three commands do?</summary>
+
+| Command | What it does |
+|---------|-------------|
+| `git add -A` | Gathers all your changes into a "package" ready to save |
+| `git commit -m "..."` | Labels the package with a message describing what changed |
+| `git push` | Uploads the package to GitHub so it's backed up online |
+
+Think of it like packing a box (`add`), writing a label on it (`commit`), and shipping it (`push`).
+
+</details>
+
+::: tip 💬 Or just ask the AI!
+You can also type in the Antigravity chat: *"Save my changes to GitHub with the message 'completed module 1'"* and it will run the commands for you.
+:::
+
+::: info Coming later
+Right now you're pushing directly to `main` — the simplest workflow. In a future module, you'll learn about **branches** and **pull requests**, which let you organize changes and get feedback before merging. Don't worry about that yet!
+:::
