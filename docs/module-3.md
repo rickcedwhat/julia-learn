@@ -32,15 +32,17 @@ An [API](/glossary#api-application-programming-interface) key is like a password
 ## Task
 Practice "[Few-Shot Prompting](/glossary#few-shot-prompting)." We will give the AI 3 examples of a label and see if it can do the 4th one perfectly.
 
-Open the Antigravity chat and type:
+Paste this into the Antigravity chat (use the **copy** button on the block):
 
-> "I want to extract data from nutrition labels into JSON format. Here are 3 examples of the input text and the correct output:
-> 
-> Example 1: `Calories 200, Pro 15g, Fat 5g` -> `{"calories": 200, "protein": 15, "fat": 5}`
-> Example 2: `Cal 150 - Protein 10g - Total Carbohydrate 20g` -> `{"calories": 150, "protein": 10, "carbs": 20}`
-> Example 3: `Energy 300kcal | Fat 10g | Sugars 5g` -> `{"calories": 300, "fat": 10, "sugar": 5}`
-> 
-> Now, extract this one exactly like the examples: `Calories: 450. Total Fat 20 g. Dietary Fiber 5g. Protein: 30g.`"
+```text
+I want to extract data from nutrition labels into JSON format. Here are 3 examples of the input text and the correct output:
+
+Example 1: Calories 200, Pro 15g, Fat 5g -> {"calories": 200, "protein": 15, "fat": 5}
+Example 2: Cal 150 - Protein 10g - Total Carbohydrate 20g -> {"calories": 150, "protein": 10, "carbs": 20}
+Example 3: Energy 300kcal | Fat 10g | Sugars 5g -> {"calories": 300, "fat": 10, "sugar": 5}
+
+Now, extract this one exactly like the examples: Calories: 450. Total Fat 20 g. Dietary Fiber 5g. Protein: 30g.
+```
 
 ## Lesson
 How to talk to an AI so it stays on track and doesn't get "distracted."

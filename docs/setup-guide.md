@@ -93,13 +93,19 @@ If you don't want to change the policy, you can switch Antigravity's terminal to
 
 The project lives online on a website called **[GitHub](/glossary#github)**. You'll download ("[clone](/glossary#clone)") it to your computer so you have your own copy to work with.
 
+::: tip Chat prompts
+Long **Antigravity chat** prompts in this guide use **code blocks** with a **copy** icon—click it and paste into the chat (not the terminal unless the guide says so).
+:::
+
 ### Step 1: Create a GitHub Account
 If you don't already have one, go to [github.com](https://github.com) and sign up — it's free. This is where developers store and share code.
 
 ### Step 2: Download the Project
-Open Antigravity and type this in the **chat** (not the terminal):
+Open Antigravity and paste this into the **chat** (not the terminal):
 
-> "Clone the repo at https://github.com/rickcedwhat/julia-learn.git into my Documents folder, then open it and install the dependencies."
+```text
+Clone the repo at https://github.com/rickcedwhat/julia-learn.git into my Documents folder, then open it and install the dependencies.
+```
 
 The AI will run the commands for you! Once it's done, you'll see all the project files in the sidebar.
 
@@ -250,15 +256,21 @@ Before writing any code, let's understand **what we're building**.
 
 Open the [App Spec](/app-spec) page and read through it. It describes the Nutrition Label app — what it does, how the data model works, and what tech we'll use.
 
-Then open the Antigravity chat and ask:
+Then open the Antigravity chat and paste:
 
-> "Read the App Spec page in docs/app-spec.md. Give me a summary report: what is this app, what are the main features, and what tech will we use to build it? Is there anything you think is unclear or missing?"
+```text
+Read the App Spec page in docs/app-spec.md. Give me a summary report: what is this app, what are the main features, and what tech will we use to build it? Is there anything you think is unclear or missing?
+```
 
 The AI will break it all down for you. After reading the report, you can ask follow-up questions like:
 
-> "What would be the hardest part to build?"
+```text
+What would be the hardest part to build?
+```
 
-> "Is there anything you'd change about this spec?"
+```text
+Is there anything you'd change about this spec?
+```
 
 This is your chance to **understand and shape the project before diving in**. If something doesn't make sense or you want to adjust the plan, just tell the AI — you can even ask it to update the spec for you.
 
@@ -300,7 +312,13 @@ Think of it like packing a box (`add`), writing a label on it (`commit`), and sh
 </details>
 
 ::: tip 💬 Or just ask the AI!
-You can also type in the Antigravity chat: *"Save my changes to GitHub with the message 'completed module 1'"* and it will run the commands for you.
+You can also paste into the Antigravity chat:
+
+```text
+Save my changes to GitHub with the message 'completed module 1'
+```
+
+…and it will run the commands for you (change the message to match what you did).
 :::
 
 ::: info Coming later
@@ -319,15 +337,17 @@ If you edited **`docs/app-spec.md`** (or other docs) with real improvements—re
 The goal is: **get curriculum updates**, **keep the spec and edits you still want**, and **decide deliberately** when both sides touched the same file.
 :::
 
-Type this in the Antigravity chat:
+Paste this into the Antigravity chat:
 
-> "I want to merge the latest from the instructor repo at `https://github.com/rickcedwhat/julia-learn.git`. My remote is usually named `upstream`. Help me `git fetch upstream` and merge `upstream/main` into my current branch (or walk me through the equivalent).
->
-> If there are **merge conflicts**, do **not** default to 'keep only the instructor's version' for every file—especially not for `docs/app-spec.md`, where I may have real updates.
->
-> For each conflicted file: show me what changed on each side, summarize in plain language, and **recommend** whether to keep my version, take theirs, or **combine** them. **I will decide** for each case before you apply anything.
->
-> If there is **no conflict**, still give me a short summary of what new commits or files came in from the instructor, so I know what changed."
+```text
+I want to merge the latest from the instructor repo at https://github.com/rickcedwhat/julia-learn.git. That repo should be linked as a Git remote named `upstream` (the instructor's project—rickcedwhat/julia-learn). My own GitHub remote is usually named `origin`. Help me `git fetch upstream` and merge `upstream/main` into my current branch (or walk me through the equivalent).
+
+If there are merge conflicts, do not default to 'keep only the instructor's version' for every file—especially not for `docs/app-spec.md`, where I may have real updates.
+
+For each conflicted file: show me what changed on each side, summarize in plain language, and recommend whether to keep my version, take theirs, or combine them. I will decide for each case before you apply anything.
+
+If there is no conflict, still give me a short summary of what new commits or files came in from the instructor, so I know what changed.
+```
 
 <details>
 <summary>💡 Want to do it manually?</summary>
