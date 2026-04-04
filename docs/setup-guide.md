@@ -313,9 +313,21 @@ Right now you're pushing directly to `main` — the simplest workflow. In a futu
 
 Your instructor may update the curriculum, add new modules, or fix things in the docs. When that happens, you'll want to pull those changes into your copy.
 
-Just type this in the Antigravity chat:
+::: warning Don't blindly overwrite your work
+If you edited **`docs/app-spec.md`** (or other docs) with real improvements—restaurant items, new sections, QA notes—those changes are **yours**. The instructor's repo might only change the *curriculum* or other guide pages. A naïve "take everything from the main repo" merge can wipe spec work you care about.
 
-> "Pull the latest changes from the main repo at https://github.com/rickcedwhat/julia-learn.git and merge them into my project. If there are any conflicts in the docs/ folder, use the version from the main repo."
+The goal is: **get curriculum updates**, **keep the spec and edits you still want**, and **decide deliberately** when both sides touched the same file.
+:::
+
+Type this in the Antigravity chat:
+
+> "I want to merge the latest from the instructor repo at `https://github.com/rickcedwhat/julia-learn.git`. My remote is usually named `upstream`. Help me `git fetch upstream` and merge `upstream/main` into my current branch (or walk me through the equivalent).
+>
+> If there are **merge conflicts**, do **not** default to 'keep only the instructor's version' for every file—especially not for `docs/app-spec.md`, where I may have real updates.
+>
+> For each conflicted file: show me what changed on each side, summarize in plain language, and **recommend** whether to keep my version, take theirs, or **combine** them. **I will decide** for each case before you apply anything.
+>
+> If there is **no conflict**, still give me a short summary of what new commits or files came in from the instructor, so I know what changed."
 
 <details>
 <summary>💡 Want to do it manually?</summary>
@@ -331,7 +343,9 @@ git fetch upstream
 git merge upstream/main
 ```
 
-If there are merge conflicts, the AI can help you resolve them — just ask!
+If Git stops with conflicts, open each conflicted file: you'll see `<<<<<<<`, `=======`, and `>>>>>>>` markers. You can edit by hand, or paste the conflict into the AI and ask for a **side-by-side recommendation**—then you choose and remove the markers yourself (or let the AI produce the merged text for you to paste in).
+
+For **`docs/app-spec.md`**, treat it like a product decision: your additions might be better than the baseline, while typo fixes from the instructor might still be worth taking in the same file.
 
 </details>
 

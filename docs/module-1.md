@@ -38,7 +38,9 @@ When new lessons or fixes land in the instructor repo, merge them into your proj
 
 Type:
 
-> "The instructor repo is `https://github.com/rickcedwhat/julia-learn.git`. I might be working from my own GitHub repo (not theirs). Walk me through: adding that repo as a remote named `upstream` if it is missing, fetching, merging `upstream/main` into my current branch, and resolving simple conflicts in `docs/` if git reports them. Remind me to commit or stash my work first if that is safer."
+> "The instructor repo is `https://github.com/rickcedwhat/julia-learn.git`. I might be working from my own GitHub repo (not theirs). Walk me through: adding that repo as a remote named `upstream` if it is missing, fetching, and merging `upstream/main` into my current branch. Remind me to commit or stash my work first if that is safer.
+>
+> If there are merge conflicts—especially in `docs/app-spec.md` where I may have updated the spec—do **not** blindly take only the instructor's version. For each conflicted file, show both sides, recommend keep mine / theirs / combine, and **wait for my choice** before we finalize."
 
 For a shorter version of the same idea, the [Setup Guide](/setup-guide) also has **Step 7 (Saving Your Work)** and **Step 8 (Getting the Latest Updates)**.
 
