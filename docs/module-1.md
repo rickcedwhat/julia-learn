@@ -9,6 +9,10 @@ On this site, chat prompts use **code blocks** with a **copy** icon in the corne
 ## Objective
 Understand that an AI is only as good as the instructions it receives.
 
+::: info Then build the shell
+When you are ready to code, finish the [Setup Guide](/setup-guide) if you have not yet, then open [Module 2](/module-2)—that is where the real app in **`app/`** starts. This module stays focused on **spec + Git**, not tooling drills.
+:::
+
 ## Task 1: Interrogating the Spec
 Read the [App Spec](/app-spec). If you were testing this, what's the first thing that would break?
 

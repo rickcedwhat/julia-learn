@@ -17,16 +17,16 @@ features:
   - title: 🏗️ The Architect
     details: Define specs and learn that in AI dev, the requirement doc IS the code.
     link: /module-1
-  - title: ⚙️ The Engine
-    details: Connect Antigravity to Gemini and get your tools talking to each other.
+  - title: 🧱 The Scaffold
+    details: Build the real Vite + React + TS shell in app/—Chat and Library placeholders, mobile-first.
     link: /module-2
   - title: ✍️ The Ghostwriter
-    details: Master prompt engineering to keep the LLM accurate and on track.
+    details: Add Gemini and few-shot prompts after the app exists—wire one real extraction path.
     link: /module-3
   - title: 🛡️ The Safety Net
-    details: Use your QA background to make the app bulletproof with Playwright.
+    details: Use your QA background to make the app bulletproof with Playwright in app/.
     link: /module-4
   - title: 🚀 The Launch
-    details: Deploy to Vercel and get the app on your actual phone.
+    details: PWA + deploy the app to Vercel and add to Home Screen.
     link: /module-5
 ---

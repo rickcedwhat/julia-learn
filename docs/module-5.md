@@ -2,16 +2,20 @@
 
 *Concepts: Hosting, [Service Workers](/glossary#service-worker), and "Installable" Apps.*
 
+::: tip Copyable prompts
+Chat prompts use **code blocks** with a **copy** icon. Paste them into Antigravity.
+:::
+
 ## Objective
-Get the app on your actual phone.
+Get **the Vite app in `app/`** on your actual phone—not the Learning Portal.
 
 ## Task
-[Deploy](/glossary#deploy) to [Vercel](/glossary#vercel) and set up the app so it can be "Added to Home Screen."
+[Deploy](/glossary#deploy) that build to [Vercel](/glossary#vercel) and set up the app so it can be "Added to Home Screen."
 
 Paste this into the Antigravity chat:
 
 ```text
-We are ready to launch! First, configure the `vite-plugin-pwa` so this app is fully installable on a mobile phone (with an icon and offline support). Second, give me step-by-step instructions on how to use the Vercel CLI to deploy this to production.
+The production app is the Vite project in `app/` (not the docs site at the repo root). Configure `vite-plugin-pwa` there so the Nutrition Label PWA is installable on a phone (icon, manifest, reasonable offline shell). Then give step-by-step Vercel CLI (or dashboard) instructions to deploy the `app` build to production, including any env vars (e.g. Gemini) needed on Vercel. Call out anything sensitive that must not ship to the browser.
 ```
 
 ## Lesson

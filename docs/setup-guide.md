@@ -6,6 +6,10 @@ Before we write a single line of code, we need to set up your "Command Center."
 Check the [Glossary](/glossary) any time you see an unfamiliar word.
 :::
 
+::: info This guide vs. the modules
+**Setup** (this page) covers Antigravity, Git, clone, `npm run docs:dev`, and saving work. **[Module 2](/module-2)** and beyond walk you through building the **real app** in the **`app/`** folder—so you are not stuck re-reading setup when you want to code.
+:::
+
 ---
 
 ## 0. Download Antigravity

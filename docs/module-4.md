@@ -2,16 +2,23 @@
 
 *Concepts: [Playwright](/glossary#playwright), Automated Testing, and Edge Cases.*
 
+::: tip Copyable prompts
+Chat prompts use **code blocks** with a **copy** icon. Paste them into Antigravity.
+:::
+
 ## Objective
 Use your QA background to make the app "Bulletproof."
 
+## Before you start
+
+You should have a running UI in **`app/`** from [Module 2](/module-2) and (ideally) some save/list flow from [Module 3](/module-3) or your own iteration. Playwright installs **into the app project** (under `app/`), not into the Learning Portal root—unless your AI sets up a monorepo test package, keep it simple.
+
 ## Task
-Use Antigravity to write a [Playwright](/glossary#playwright) test that clicks the "Save" button and checks if the data actually appeared in the database.
 
 Paste this into the Antigravity chat:
 
 ```text
-Install Playwright for this project. Then, write an End-to-End (E2E) test that simulates a user visiting the app, filling out a nutrition label form with 500 Calories and 30g Protein, clicking the 'Save to Library' button, and verifying the new item appears in the list.
+My Nutrition Label app is the Vite + React project in `app/`. Install Playwright there (devDependency, config, npm script if helpful). Write one End-to-End test that opens the app, exercises the main happy path you have so far—e.g. fill or paste label data, trigger Save to Library (or the closest button you implemented), and assert the new item shows up in the Library list or UI. If we do not have a database yet, assert on what the UI actually shows (local state or list). Adapt selectors to my real components.
 ```
 
 ## Lesson
