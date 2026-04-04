@@ -1,0 +1,28 @@
+/**
+ * Plain-text / copy-paste prompts use ```text fences. Default VitePress/Shiki
+ * styling uses nowrap + horizontal scroll, so long URLs and paragraphs blow out
+ * the content width. Wrap these blocks and keep them inside the article column.
+ */
+.vp-doc div[class*='language-text'] {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.vp-doc div[class*='language-text'] pre,
+.vp-doc div[class*='language-text'] code {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  max-width: 100%;
+}
+
+.vp-doc div[class*='language-text'] pre {
+  overflow-x: hidden;
+}
+
+.vp-doc div[class*='language-text'] .line {
+  display: block;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}

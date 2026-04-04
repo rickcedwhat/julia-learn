@@ -340,13 +340,23 @@ The goal is: **get curriculum updates**, **keep the spec and edits you still wan
 Paste this into the Antigravity chat:
 
 ```text
-I want to merge the latest from the instructor repo at https://github.com/rickcedwhat/julia-learn.git. That repo should be linked as a Git remote named `upstream` (the instructor's project—rickcedwhat/julia-learn). My own GitHub remote is usually named `origin`. Help me `git fetch upstream` and merge `upstream/main` into my current branch (or walk me through the equivalent).
+I want to merge the latest from the instructor repo at
+https://github.com/rickcedwhat/julia-learn.git. That repo should be linked as a
+Git remote named `upstream` (the instructor's project—rickcedwhat/julia-learn).
+My own GitHub remote is usually named `origin`. Help me `git fetch upstream`
+and merge `upstream/main` into my current branch (or walk me through the
+equivalent).
 
-If there are merge conflicts, do not default to 'keep only the instructor's version' for every file—especially not for `docs/app-spec.md`, where I may have real updates.
+If there are merge conflicts, do not default to 'keep only the instructor's
+version' for every file—especially not for `docs/app-spec.md`, where I may have
+real updates.
 
-For each conflicted file: show me what changed on each side, summarize in plain language, and recommend whether to keep my version, take theirs, or combine them. I will decide for each case before you apply anything.
+For each conflicted file: show me what changed on each side, summarize in plain
+language, and recommend whether to keep my version, take theirs, or combine
+them. I will decide for each case before you apply anything.
 
-If there is no conflict, still give me a short summary of what new commits or files came in from the instructor, so I know what changed.
+If there is no conflict, still give me a short summary of what new commits or
+files came in from the instructor, so I know what changed.
 ```
 
 <details>
