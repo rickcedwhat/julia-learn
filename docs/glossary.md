@@ -137,6 +137,9 @@ Hidden instructions given to an AI before the user starts chatting. It sets the 
 
 ## T
 
+### Temperature
+A dial on the LLM that controls how **random** or **creative** its outputs are. **Low temperature** (near 0) means stick to the most likely, predictable answer — good for extracting nutrition facts or JSON where mistakes matter. **Higher temperature** means more variety and surprise — better for brainstorming UX copy or spec ideas, not for fragile structured data. When you call an API like Gemini later, you will often set this explicitly.
+
 ### Terminal
 A text-based interface for typing commands. In Antigravity, the terminal is built right in — press `` Ctrl + ` `` to open it. You'll use it to install tools, run the app, and interact with Git.
 

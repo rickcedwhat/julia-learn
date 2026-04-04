@@ -195,7 +195,7 @@ In the Antigravity terminal (press `` Ctrl + ` `` to open it), type:
 npm run
 ```
 
-This lists every shortcut the project knows. Right now you'll see three `docs:` scripts.
+This lists every shortcut the project knows. Besides the `docs:*` scripts, there are small **Git helpers** (`repo:status`, `repo:remotes`, `repo:diff`) and `sync:fetch-upstream` (runs `git fetch upstream` after you have added the instructor repo as `upstream`). They do not replace the full push/merge workflow — they just give you and the AI quick, copy-paste-safe checks.
 
 ::: warning Important
 If you run a script that doesn't exist (like `npm run dev`), you'll get an error: **"Missing script: dev"**. That's not a bug — it just means that shortcut hasn't been created yet. Run `npm run` (with nothing after it) to see which ones are available.

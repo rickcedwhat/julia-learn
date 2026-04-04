@@ -6,7 +6,11 @@
   "scripts": {
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
-    "docs:preview": "vitepress preview docs"
+    "docs:preview": "vitepress preview docs",
+    "repo:status": "git status -sb",
+    "repo:remotes": "git remote -v",
+    "repo:diff": "git diff --stat",
+    "sync:fetch-upstream": "git fetch upstream"
   },
   "keywords": [],
   "author": "",
