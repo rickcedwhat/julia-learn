@@ -11,6 +11,17 @@ erDiagram
         text email
         text display_name
     }
+    USER_GOALS {
+        uuid id PK
+        uuid user_id FK
+        numeric calories
+        numeric protein_g
+        numeric fat_g
+        numeric carbs_g
+        numeric fiber_g
+        numeric sugar_g
+        timestamptz updated_at
+    }
     RECIPE {
         uuid id PK
         uuid user_id FK
@@ -49,8 +60,8 @@ erDiagram
         uuid id PK
         uuid user_id FK
         text name
+        text meal_type
         jsonb computed_macros
-        text kickoff_export
         timestamptz logged_at
     }
     MEAL_COMPONENT {
@@ -62,6 +73,7 @@ erDiagram
         decimal scale_factor
     }
 
+    USER ||--o| USER_GOALS : "has"
     USER ||--o{ RECIPE : "creates"
     USER ||--o{ BATCH : "cooks"
     USER ||--o{ LABEL : "saves"
@@ -72,9 +84,12 @@ erDiagram
     MEAL_COMPONENT }o--o| BATCH : "portions from"
 ```
 
+> `meal_type` is an enum: `breakfast | lunch | dinner | snack`
+> `USER_GOALS` has one row per user (upsert on save). All fields nullable — goals are opt-in per macro.
+
 ---
 
-## 2. Chat Flow (Working Meal → Log / Save)
+## 2. Chat Flow (Working Meal → Save Widget → Log)
 
 ```mermaid
 flowchart TD
@@ -89,7 +104,7 @@ flowchart TD
     E --> G
     F --> G
 
-    G --> H[Render Visual Macro Card\nCalories · Protein · Fat\nCarbs · Fiber · Sugar]
+    G --> H[Render Macro Card\nCalories · Protein · Fat\nCarbs · Fiber · Sugar]
     H --> I{Density checks}
     I -->|protein ≥ cal × 0.05| J[✅ Protein badge]
     I -->|fiber ≥ cal × 0.015| K[✅ Fiber badge]
@@ -97,13 +112,51 @@ flowchart TD
 
     J & K & L --> M{User action}
     M -->|Save to Library| N[Prompt for name → save Label]
-    M -->|Log meal| O[Save Meal + generate Kickoff export string]
+    M -->|Done - log this meal| O[Render Save Widget]
     M -->|Keep editing| C
+
+    subgraph WIDGET ["💾 Save Widget (no LLM)"]
+        O --> P[Meal name — inline editable]
+        O --> Q[Meal type — button group\nBreakfast · Lunch · Dinner · Snack]
+        O --> R[Time — time picker\ndefaults to now]
+        O --> S[Macro summary — read-only]
+    end
+
+    P & Q & R --> T{User confirms}
+    T -->|Log Meal| U[Write to meals table]
+    T -->|Keep Editing| C
+
+    U --> V[Widget becomes read-only summary\n+ Share button]
+    V --> W[Share → copy LOG string to clipboard]
+```
+
+> **Key principle:** meal type and time edits inside the Save Widget never go through the LLM. They are direct UI interactions that update local state only.
+
+---
+
+## 3. Daily Log Page
+
+```mermaid
+flowchart TD
+    PAGE([/log or /log/YYYY-MM-DD]) --> DATE[Date header\n← prev day · today · next day →]
+    DATE --> MEALS[Meal list ordered by logged_at]
+
+    MEALS --> M1[Breakfast 08:30\nOatmeal · 420 kcal · 18g protein]
+    MEALS --> M2[Lunch 12:45\nChicken + rice · 610 kcal · 52g protein]
+    MEALS --> M3[Snack 15:00\nGreek yogurt · 180 kcal · 17g protein]
+
+    M1 & M2 & M3 --> TAP{Tap meal card}
+    TAP -->|Expand| DETAIL[Full 6-macro panel\n+ inline edit for type and time\n+ Share button]
+    TAP -->|Swipe/long-press| DELETE[Delete with confirmation]
+
+    MEALS --> TOTALS[Daily Totals\nsum of all logged meals]
+    TOTALS --> GOALS[Goal progress per macro\ne.g. Protein 87g / 150g\nshown as fraction or progress bar]
+    GOALS --> GOALS_LINK[Goals set in /settings]
 ```
 
 ---
 
-## 3. Recipe → Batch → Portion Flow
+## 4. Recipe → Batch → Portion Flow
 
 ```mermaid
 flowchart LR
@@ -125,15 +178,15 @@ flowchart LR
     R --> B2
     B1 --> M1
     B2 --> M2
-    M1 --> E1[📋 Kickoff export]
-    M2 --> E2[📋 Kickoff export]
+    M1 --> E1[Daily log]
+    M2 --> E2[Daily log]
 ```
 
 > **Physical labeling convention:** Write the marker color on the ziploc bag in real life, select the same color in-app. Batches of the same recipe are unambiguous at a glance.
 
 ---
 
-## 4. Auto-Tag System
+## 5. Auto-Tag System
 
 ```mermaid
 flowchart TD
@@ -162,11 +215,11 @@ flowchart TD
     CAP --> OUT[0–3 tags applied\nicon · text · color]
 ```
 
-> **Note on tag taxonomy:** The specific tags, thresholds, icons, and colors above are proposals — see issue #25 to finalize before implementation.
+> **Note on tag taxonomy:** The specific tags, thresholds, icons, and colors above are proposals — see [#27](https://github.com/rickcedwhat/julia-learn/issues/27) to finalize before implementation.
 
 ---
 
-## 5. Label Origin Types
+## 6. Label Origin Types
 
 | Origin | How it's created | Trust level |
 |---|---|---|
