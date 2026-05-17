@@ -29,7 +29,7 @@ CREATE TABLE recipes (
 CREATE TABLE batches (
   id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id         uuid REFERENCES auth.users(id),
-  recipe_id       uuid REFERENCES recipes(id),
+  recipe_id       uuid REFERENCES recipes(id) ON DELETE SET NULL,
   name            text NOT NULL,
   marker_label    text,
   marker_color    text,
@@ -44,15 +44,14 @@ CREATE TABLE meals (
   name            text NOT NULL,
   meal_type       text CHECK (meal_type IN ('breakfast', 'lunch', 'dinner', 'snack')),
   computed_macros jsonb,
-  kickoff_export  text,
   logged_at       timestamptz NOT NULL DEFAULT now()
 );
 
 CREATE TABLE meal_components (
   id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   meal_id      uuid NOT NULL REFERENCES meals(id) ON DELETE CASCADE,
-  label_id     uuid REFERENCES labels(id),
-  batch_id     uuid REFERENCES batches(id),
+  label_id     uuid REFERENCES labels(id) ON DELETE SET NULL,
+  batch_id     uuid REFERENCES batches(id) ON DELETE SET NULL,
   weight_g     numeric,
   scale_factor numeric,
   CONSTRAINT meal_component_source CHECK (
@@ -63,7 +62,7 @@ CREATE TABLE meal_components (
 CREATE TABLE user_rules (
   id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id     uuid REFERENCES auth.users(id),
-  macro       text NOT NULL,
+  macro       text NOT NULL CHECK (macro IN ('calories', 'protein', 'fat', 'carbs', 'fiber', 'sugar')),
   scope       text NOT NULL CHECK (scope IN ('per_meal', 'per_day')),
   operator    text NOT NULL CHECK (operator IN ('<=', '>=', '=')),
   value       numeric NOT NULL,
