@@ -10,13 +10,17 @@
     "repo:status": "git status -sb",
     "repo:remotes": "git remote -v",
     "repo:diff": "git diff --stat",
-    "sync:fetch-upstream": "git fetch upstream"
+    "sync:fetch-upstream": "git fetch upstream",
+    "prepare": "husky"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "devDependencies": {
+    "@commitlint/cli": "^21.0.1",
+    "@commitlint/config-conventional": "^21.0.1",
+    "husky": "^9.1.7",
     "vitepress": "^1.6.4"
   }
 }

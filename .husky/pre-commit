@@ -1,0 +1,12 @@
+#!/bin/sh
+# Guard: never commit .env files (they contain Supabase + Gemini secrets)
+if git diff --cached --name-only | grep -qE '(^|/)\.env$'; then
+  echo "✗ .env is staged — this file contains secrets and must not be committed."
+  echo "  Remove it: git restore --staged \$(git diff --cached --name-only | grep -E '(^|/)\.env$')"
+  exit 1
+fi
+
+# Run lint-staged in app/ once the scaffold exists
+if [ -f "app/package.json" ] && [ -d "app/node_modules" ]; then
+  cd app && npx lint-staged || exit 1
+fi
