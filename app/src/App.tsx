@@ -1,7 +1,7 @@
+import Health from '@/Health'
+
 function App() {
-  return (
-    <div className="min-h-screen bg-white" />
-  )
+  return <Health />
 }
 
 export default App
