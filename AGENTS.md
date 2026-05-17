@@ -104,6 +104,31 @@ Any Supabase schema change needs a corresponding migration. Do not modify the sc
 
 ---
 
+## Git Hooks (Husky)
+
+Three hooks run automatically after `npm install` at the repo root.
+
+| Hook | What it does |
+|---|---|
+| `commit-msg` | `commitlint` — rejects commits that don't follow Conventional Commits |
+| `pre-commit` | Blocks `.env` from being staged; runs `lint-staged` in `/app` once scaffolded |
+| `pre-push` | Rejects push if branch isn't rebased onto `origin/main` |
+
+### lint-staged (add to `app/package.json` in the scaffold PR)
+
+```json
+"lint-staged": {
+  "src/**/*.{ts,tsx}": [
+    "eslint --fix --max-warnings=0",
+    "bash -c 'npx tsc --noEmit'"
+  ]
+}
+```
+
+This runs ESLint (with auto-fix) and a full typecheck on every commit touching `app/src/`. Add `lint-staged` as a devDependency in `app/package.json`.
+
+---
+
 ## CI
 
 None configured yet (Phase 3). Until then, run `npm run build` and `npm run typecheck` locally before marking a PR ready.
