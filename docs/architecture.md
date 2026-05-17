@@ -11,16 +11,16 @@ erDiagram
         text email
         text display_name
     }
-    USER_GOALS {
+    USER_RULES {
         uuid id PK
         uuid user_id FK
-        numeric calories
-        numeric protein_g
-        numeric fat_g
-        numeric carbs_g
-        numeric fiber_g
-        numeric sugar_g
-        timestamptz updated_at
+        text macro
+        text scope
+        text operator
+        numeric value
+        text value_type
+        boolean active
+        timestamptz created_at
     }
     RECIPE {
         uuid id PK
@@ -73,7 +73,7 @@ erDiagram
         decimal scale_factor
     }
 
-    USER ||--o| USER_GOALS : "has"
+    USER ||--o{ USER_RULES : "defines"
     USER ||--o{ RECIPE : "creates"
     USER ||--o{ BATCH : "cooks"
     USER ||--o{ LABEL : "saves"
@@ -84,8 +84,11 @@ erDiagram
     MEAL_COMPONENT }o--o| BATCH : "portions from"
 ```
 
-> `meal_type` is an enum: `breakfast | lunch | dinner | snack`
-> `USER_GOALS` has one row per user (upsert on save). All fields nullable — goals are opt-in per macro.
+> `meal_type` enum: `breakfast | lunch | dinner | snack`
+>
+> `USER_RULES` is sparse — users only create rules for macros they care about. `scope` is `per_meal` or `per_day`. `operator` is `<=`, `>=`, or `=`. `value_type` is `absolute` (raw units) or `ratio` (× meal calories). The combination `macro=calories` + `value_type=ratio` is blocked by a DB constraint.
+>
+> **Evaluation:** `absolute` → `meal.macro [op] value` · `ratio` → `meal.macro [op] meal.calories × value`
 
 ---
 
@@ -150,8 +153,8 @@ flowchart TD
     TAP -->|Swipe/long-press| DELETE[Delete with confirmation]
 
     MEALS --> TOTALS[Daily Totals\nsum of all logged meals]
-    TOTALS --> GOALS[Goal progress per macro\ne.g. Protein 87g / 150g\nshown as fraction or progress bar]
-    GOALS --> GOALS_LINK[Goals set in /settings]
+    TOTALS --> GOALS[per_day rule evaluation\ne.g. Protein 87g ≥ 100g ✅\nCalories 1640 ≤ 2000 ✅]
+    GOALS --> GOALS_LINK[Rules configured in /settings]
 ```
 
 ---
