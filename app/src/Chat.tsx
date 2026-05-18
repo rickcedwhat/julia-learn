@@ -2,13 +2,26 @@ import { useEffect, useRef, useState } from 'react'
 import ChatMessage from '@/components/ChatMessage'
 import ChatInput from '@/components/ChatInput'
 import { useWorkingMeal } from '@/hooks/useWorkingMeal'
-import { sendMessage } from '@/lib/gemini'
+import { sendMessage, ocrImage } from '@/lib/gemini'
 import type { Message } from '@/components/ChatMessage'
 import type { ChatMessage as GeminiMessage } from '@/lib/gemini'
 
 let idCounter = 0
 function nextId() {
   return String(++idCounter)
+}
+
+function readFileAsBase64(file: File): Promise<{ base64: string; dataUrl: string }> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const dataUrl = reader.result as string
+      const base64 = dataUrl.split(',')[1]
+      resolve({ base64, dataUrl })
+    }
+    reader.onerror = () => reject(reader.error)
+    reader.readAsDataURL(file)
+  })
 }
 
 export default function Chat() {
@@ -80,6 +93,45 @@ export default function Chat() {
     }
   }
 
+  async function handlePhoto(file: File) {
+    if (loading) return
+    setLoading(true)
+
+    try {
+      const { base64, dataUrl } = await readFileAsBase64(file)
+
+      // Show image preview immediately as a user message
+      const userMsg: Message = {
+        id: nextId(),
+        role: 'user',
+        text: '',
+        imageDataUrl: dataUrl,
+      }
+      setMessages((prev) => [...prev, userMsg])
+
+      // Run OCR via Gemini Vision
+      const extracted = await ocrImage(base64, file.type)
+
+      // Show assistant message with MacroCard
+      const assistantMsg: Message = {
+        id: nextId(),
+        role: 'assistant',
+        text: 'Here are the nutrition facts I found:',
+        ocrTotals: extracted,
+      }
+      setMessages((prev) => [...prev, assistantMsg])
+    } catch {
+      const errorMsg: Message = {
+        id: nextId(),
+        role: 'assistant',
+        text: 'Sorry, I could not read that nutrition label. Please try a clearer photo.',
+      }
+      setMessages((prev) => [...prev, errorMsg])
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
@@ -101,7 +153,7 @@ export default function Chat() {
         <div ref={bottomRef} />
       </div>
 
-      <ChatInput onSend={handleSend} disabled={loading} />
+      <ChatInput onSend={handleSend} onPhoto={handlePhoto} disabled={loading} />
     </div>
   )
 }
