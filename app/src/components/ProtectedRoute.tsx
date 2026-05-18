@@ -3,8 +3,16 @@ import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '@/lib/supabase'
 
 function LoginPage() {
-  function handleSignIn() {
-    supabase.auth.signInWithOAuth({ provider: 'google' })
+  async function handleSignIn() {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin,
+      },
+    })
+    if (error) {
+      console.error('Sign in error:', error.message)
+    }
   }
 
   return (
