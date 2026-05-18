@@ -1,7 +1,7 @@
-import type { WorkingMealTotals } from '@/lib/gemini'
+import type { WorkingMealTotals, OcrTotals } from '@/lib/gemini'
 
 interface Props {
-  totals: WorkingMealTotals
+  totals: WorkingMealTotals | OcrTotals
 }
 
 function fmt(val: number | null | undefined): string {
@@ -15,22 +15,22 @@ interface Row {
 }
 
 export default function MacroCard({ totals }: Props) {
-  const proteinPass = totals.protein_g >= totals.calories * 0.05
-  const fiberPass = totals.fiber_g >= totals.calories * 0.015
+  const proteinPass = totals.calories != null && totals.protein_g != null && totals.protein_g >= totals.calories * 0.05
+  const fiberPass = totals.calories != null && totals.fiber_g != null && totals.fiber_g >= totals.calories * 0.015
 
   const rows: Row[] = [
     { label: 'Calories', value: fmt(totals.calories) + ' kcal' },
     {
       label: 'Protein',
       value: fmt(totals.protein_g) + ' g',
-      badge: totals.calories > 0 ? (proteinPass ? 'pass' : 'fail') : undefined,
+      badge: totals.calories != null && totals.calories > 0 ? (proteinPass ? 'pass' : 'fail') : undefined,
     },
     { label: 'Fat', value: fmt(totals.fat_g) + ' g' },
     { label: 'Total Carbs', value: fmt(totals.carbs_g) + ' g' },
     {
       label: 'Fiber',
       value: fmt(totals.fiber_g) + ' g',
-      badge: totals.calories > 0 ? (fiberPass ? 'pass' : 'fail') : undefined,
+      badge: totals.calories != null && totals.calories > 0 ? (fiberPass ? 'pass' : 'fail') : undefined,
     },
     { label: 'Sugar', value: fmt(totals.sugar_g) + ' g' },
   ]

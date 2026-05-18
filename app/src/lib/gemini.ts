@@ -79,3 +79,62 @@ export async function sendMessage(history: ChatMessage[]): Promise<WorkingMeal> 
   const parsed = JSON.parse(cleaned) as WorkingMeal
   return parsed
 }
+
+// ── OCR ─────────────────────────────────────────────────────────────────────
+
+export interface OcrTotals {
+  calories: number | null
+  protein_g: number | null
+  fat_g: number | null
+  carbs_g: number | null
+  fiber_g: number | null
+  sugar_g: number | null
+}
+
+const OCR_PROMPT = `You are a nutrition label parser.
+Extract exactly these 6 fields from the nutrition label in this image:
+- Calories
+- Protein (g)
+- Fat (g)
+- Total Carbs (g)
+- Fiber (g)
+- Sugar (g)
+
+Return ONLY valid JSON (no markdown, no code fences) in exactly this shape:
+{
+  "calories": <number or null>,
+  "protein_g": <number or null>,
+  "fat_g": <number or null>,
+  "carbs_g": <number or null>,
+  "fiber_g": <number or null>,
+  "sugar_g": <number or null>
+}
+
+If a field is not visible or legible, use null. Do not guess.`
+
+export async function ocrImage(base64: string, mimeType: string): Promise<OcrTotals> {
+  const key = import.meta.env.VITE_GEMINI_API_KEY
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [
+        {
+          parts: [
+            { text: OCR_PROMPT },
+            { inline_data: { mime_type: mimeType, data: base64 } },
+          ],
+        },
+      ],
+    }),
+  })
+
+  if (!res.ok) throw new Error(`Gemini OCR error: HTTP ${res.status}`)
+
+  const data = await res.json()
+  const raw: string = data.candidates[0].content.parts[0].text
+  const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim()
+  return JSON.parse(cleaned) as OcrTotals
+}
