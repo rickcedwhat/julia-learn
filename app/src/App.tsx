@@ -1,15 +1,13 @@
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { Header } from '@/components/Header'
-import Health from '@/Health'
+import Chat from '@/Chat'
 
 function App() {
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-white">
+      <div className="flex flex-col h-dvh bg-white">
         <Header />
-        <main>
-          <Health />
-        </main>
+        <Chat />
       </div>
     </ProtectedRoute>
   )
