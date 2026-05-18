@@ -35,8 +35,18 @@ interface ProtectedRouteProps {
   children: ReactNode
 }
 
+// VITE_AUTH_BYPASS=true skips OAuth — set this in Vercel's Preview environment
+// so preview deployments are accessible without Google sign-in.
+// Supabase queries will return empty data (RLS blocks unauthenticated reads) but
+// UI, chat, and OCR features are fully testable.
+const AUTH_BYPASS = import.meta.env.VITE_AUTH_BYPASS === 'true'
+
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { session, loading } = useAuth()
+
+  if (AUTH_BYPASS) {
+    return <>{children}</>
+  }
 
   if (loading) {
     return (
