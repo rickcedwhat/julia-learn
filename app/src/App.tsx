@@ -5,6 +5,7 @@ import Chat from '@/Chat'
 import LogPage from '@/pages/LogPage'
 import LibraryPage from '@/pages/LibraryPage'
 import LabelDetailPage from '@/pages/LabelDetailPage'
+import SettingsPage from '@/pages/SettingsPage'
 
 function todayStr(): string {
   return new Date().toISOString().slice(0, 10)
@@ -55,6 +56,14 @@ function App() {
           element={
             <AppShell>
               <LabelDetailPage />
+            </AppShell>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <AppShell>
+              <SettingsPage />
             </AppShell>
           }
         />

@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import ChatMessage from '@/components/ChatMessage'
 import ChatInput from '@/components/ChatInput'
 import { useWorkingMeal } from '@/hooks/useWorkingMeal'
+import { useUserRules } from '@/hooks/useUserRules'
 import { sendMessage, ocrImage } from '@/lib/gemini'
 import { supabase } from '@/lib/supabase'
 import type { Message } from '@/components/ChatMessage'
@@ -32,6 +33,7 @@ export default function Chat() {
   const bottomRef = useRef<HTMLDivElement>(null)
   const { update } = useWorkingMeal()
   const [searchParams, setSearchParams] = useSearchParams()
+  const { rules } = useUserRules()
 
   // Deep-link: ?label=<id> → load label into working meal
   useEffect(() => {
@@ -121,6 +123,7 @@ export default function Chat() {
         id: nextId(),
         role: 'assistant',
         text: meal.message,
+        rules,
         ...(meal.ready_to_log && hasComponents
           ? {
               saveWidget: {
@@ -182,6 +185,7 @@ export default function Chat() {
         role: 'assistant',
         text: 'Here are the nutrition facts I found:',
         ocrTotals: extracted,
+        rules,
       }
       setMessages((prev) => [...prev, assistantMsg])
     } catch {

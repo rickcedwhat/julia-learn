@@ -2,15 +2,34 @@ import { useState, useRef, useEffect } from 'react'
 import type { WorkingMealTotals, OcrTotals } from '@/lib/gemini'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
+import type { UserRule } from '@/hooks/useUserRules'
+import { evaluateRule } from '@/hooks/useUserRules'
+
+// ── Types & helpers ───────────────────────────────────────────────────────────
 
 interface Props {
   totals: WorkingMealTotals | OcrTotals
   origin?: 'ai_estimated' | 'verified_label'
   onSaved?: () => void
+  /** Per-meal rules to evaluate. If omitted, falls back to hardcoded protein/fiber checks. */
+  rules?: UserRule[]
 }
 
 function fmt(val: number | null | undefined): string {
   return val == null ? '—' : val.toFixed(1)
+}
+
+/** Map Macro enum → totals field name */
+function macroToField(macro: UserRule['macro']): keyof (WorkingMealTotals & OcrTotals) {
+  const map: Record<UserRule['macro'], keyof (WorkingMealTotals & OcrTotals)> = {
+    calories: 'calories',
+    protein:  'protein_g',
+    fat:      'fat_g',
+    carbs:    'carbs_g',
+    fiber:    'fiber_g',
+    sugar:    'sugar_g',
+  }
+  return map[macro]
 }
 
 interface Row {
@@ -21,7 +40,9 @@ interface Row {
 
 type SaveState = 'idle' | 'naming' | 'checking' | 'conflict' | 'saving' | 'saved' | 'error'
 
-export default function MacroCard({ totals, origin, onSaved }: Props) {
+// ── Component ─────────────────────────────────────────────────────────────────
+
+export default function MacroCard({ totals, origin, onSaved, rules }: Props) {
   const { user } = useAuth()
   const [saveState, setSaveState] = useState<SaveState>('idle')
   const [name, setName] = useState('')
@@ -37,25 +58,46 @@ export default function MacroCard({ totals, origin, onSaved }: Props) {
     }
   }, [saveState])
 
-  const proteinPass = totals.calories != null && totals.protein_g != null && totals.protein_g >= totals.calories * 0.05
-  const fiberPass = totals.calories != null && totals.fiber_g != null && totals.fiber_g >= totals.calories * 0.015
+  // ── Badge logic ─────────────────────────────────────────────────────────────
+  // If `rules` prop is provided, evaluate per-meal rules per macro row.
+  // Otherwise fall back to hardcoded protein ≥ 5% and fiber ≥ 1.5% of calories.
+
+  function getBadge(macro: UserRule['macro']): 'pass' | 'fail' | undefined {
+    const cal = totals.calories ?? 0
+    if (cal <= 0) return undefined
+
+    if (rules !== undefined) {
+      // Rule-driven
+      const perMealRules = rules.filter((r) => r.scope === 'per_meal' && r.macro === macro)
+      if (perMealRules.length === 0) return undefined
+      const field = macroToField(macro)
+      const macroVal = (totals[field] as number | null | undefined) ?? 0
+      const allPass = perMealRules.every((r) => evaluateRule(r, macroVal, cal))
+      return allPass ? 'pass' : 'fail'
+    } else {
+      // Hardcoded fallback
+      if (macro === 'protein') {
+        const pass = totals.protein_g != null && totals.protein_g >= cal * 0.05
+        return pass ? 'pass' : 'fail'
+      }
+      if (macro === 'fiber') {
+        const pass = totals.fiber_g != null && totals.fiber_g >= cal * 0.015
+        return pass ? 'pass' : 'fail'
+      }
+      return undefined
+    }
+  }
 
   const rows: Row[] = [
-    { label: 'Calories', value: fmt(totals.calories) + ' kcal' },
-    {
-      label: 'Protein',
-      value: fmt(totals.protein_g) + ' g',
-      badge: totals.calories != null && totals.calories > 0 ? (proteinPass ? 'pass' : 'fail') : undefined,
-    },
-    { label: 'Fat', value: fmt(totals.fat_g) + ' g' },
-    { label: 'Total Carbs', value: fmt(totals.carbs_g) + ' g' },
-    {
-      label: 'Fiber',
-      value: fmt(totals.fiber_g) + ' g',
-      badge: totals.calories != null && totals.calories > 0 ? (fiberPass ? 'pass' : 'fail') : undefined,
-    },
-    { label: 'Sugar', value: fmt(totals.sugar_g) + ' g' },
+    { label: 'Calories',    value: fmt(totals.calories)  + ' kcal', badge: getBadge('calories') },
+    { label: 'Protein',     value: fmt(totals.protein_g) + ' g',    badge: getBadge('protein')  },
+    { label: 'Fat',         value: fmt(totals.fat_g)     + ' g',    badge: getBadge('fat')      },
+    { label: 'Total Carbs', value: fmt(totals.carbs_g)   + ' g',    badge: getBadge('carbs')    },
+    { label: 'Fiber',       value: fmt(totals.fiber_g)   + ' g',    badge: getBadge('fiber')    },
+    { label: 'Sugar',       value: fmt(totals.sugar_g)   + ' g',    badge: getBadge('sugar')    },
   ]
+
+  // ── Save to Library ─────────────────────────────────────────────────────────
 
   /** Check for name collision, then show conflict UI or save directly. */
   async function handleCheckAndSave() {

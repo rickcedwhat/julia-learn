@@ -4,6 +4,8 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import type { WorkingMealTotals } from '@/lib/gemini'
 import MacroCard from '@/components/MacroCard'
+import { useUserRules, evaluateRule } from '@/hooks/useUserRules'
+import type { UserRule } from '@/hooks/useUserRules'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -56,6 +58,81 @@ function sumMacros(meals: Meal[]): WorkingMealTotals {
       sugar_g:   acc.sugar_g   + (meal.computed_macros?.sugar_g   ?? 0),
     }),
     { calories: 0, protein_g: 0, fat_g: 0, carbs_g: 0, fiber_g: 0, sugar_g: 0 }
+  )
+}
+
+// ── Rule helpers ──────────────────────────────────────────────────────────────
+
+function getMacroValue(totals: WorkingMealTotals, macro: UserRule['macro']): number {
+  switch (macro) {
+    case 'calories': return totals.calories
+    case 'protein':  return totals.protein_g
+    case 'fat':      return totals.fat_g
+    case 'carbs':    return totals.carbs_g
+    case 'fiber':    return totals.fiber_g
+    case 'sugar':    return totals.sugar_g
+  }
+}
+
+function macroLabel(macro: UserRule['macro']): string {
+  const labels: Record<UserRule['macro'], string> = {
+    calories: 'Calories', protein: 'Protein', fat: 'Fat',
+    carbs: 'Carbs', fiber: 'Fiber', sugar: 'Sugar',
+  }
+  return labels[macro]
+}
+
+function formatRuleTarget(rule: UserRule, calories: number): string {
+  if (rule.value_type === 'ratio') {
+    const target = calories * rule.value
+    return `${target.toFixed(1)} g`
+  }
+  if (rule.macro === 'calories') return `${rule.value} kcal`
+  return `${rule.value} g`
+}
+
+function formatMacroActual(macro: UserRule['macro'], totals: WorkingMealTotals): string {
+  const val = getMacroValue(totals, macro)
+  if (macro === 'calories') return `${val.toFixed(0)} kcal`
+  return `${val.toFixed(1)} g`
+}
+
+interface PerDayRuleSummaryProps {
+  rules: UserRule[]
+  totals: WorkingMealTotals
+}
+
+function PerDayRuleSummary({ rules, totals }: PerDayRuleSummaryProps) {
+  const perDayRules = rules.filter((r) => r.scope === 'per_day')
+  if (perDayRules.length === 0) return null
+
+  return (
+    <div className="bg-white border border-gray-200 rounded-xl p-3 text-sm">
+      <p className="font-semibold text-gray-700 mb-2">Daily targets</p>
+      <div className="divide-y divide-gray-100">
+        {perDayRules.map((rule) => {
+          const actual = getMacroValue(totals, rule.macro)
+          const pass = evaluateRule(rule, actual, totals.calories)
+          return (
+            <div key={rule.id} className="flex items-center justify-between py-1.5 gap-3">
+              <span className="text-gray-600">{macroLabel(rule.macro)}</span>
+              <span className="text-gray-400 text-xs">{rule.operator}</span>
+              <span className="flex-1 text-gray-500 text-xs">
+                {formatRuleTarget(rule, totals.calories)}
+              </span>
+              <span className="font-medium text-gray-900">
+                {formatMacroActual(rule.macro, totals)}
+              </span>
+              {pass ? (
+                <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded">✓</span>
+              ) : (
+                <span className="text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded">✗</span>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
   )
 }
 
@@ -154,6 +231,7 @@ export default function LogPage() {
   const { date } = useParams<{ date: string }>()
   const navigate = useNavigate()
   const { user } = useAuth()
+  const { rules } = useUserRules()
 
   const activeDate = date ?? todayStr()
   const isToday = activeDate === todayStr()
@@ -235,11 +313,12 @@ export default function LogPage() {
             ))}
 
             {/* Daily totals */}
-            <div className="pt-2">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+            <div className="pt-2 space-y-3">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
                 Daily totals
               </p>
-              <MacroCard totals={totals} />
+              <MacroCard totals={totals} rules={rules} />
+              <PerDayRuleSummary rules={rules} totals={totals} />
             </div>
           </>
         )}
