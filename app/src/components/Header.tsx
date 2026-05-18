@@ -1,0 +1,34 @@
+import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/hooks/useAuth'
+
+export function Header() {
+  const { user } = useAuth()
+
+  function handleSignOut() {
+    supabase.auth.signOut()
+  }
+
+  if (!user) return null
+
+  return (
+    <header className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+      <span className="font-semibold text-gray-800">Julia</span>
+      <div className="flex items-center gap-3">
+        {user.user_metadata?.avatar_url && (
+          <img
+            src={user.user_metadata.avatar_url}
+            alt={user.email ?? 'User avatar'}
+            className="w-8 h-8 rounded-full"
+          />
+        )}
+        <span className="text-sm text-gray-600 hidden sm:block">{user.email}</span>
+        <button
+          onClick={handleSignOut}
+          className="text-sm text-gray-500 hover:text-gray-800 transition-colors"
+        >
+          Sign out
+        </button>
+      </div>
+    </header>
+  )
+}
