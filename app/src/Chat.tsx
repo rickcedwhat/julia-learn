@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import ChatMessage from '@/components/ChatMessage'
 import ChatInput from '@/components/ChatInput'
 import { useWorkingMeal } from '@/hooks/useWorkingMeal'
 import { sendMessage, ocrImage } from '@/lib/gemini'
+import { supabase } from '@/lib/supabase'
 import type { Message } from '@/components/ChatMessage'
 import type { ChatMessage as GeminiMessage } from '@/lib/gemini'
 
@@ -29,6 +31,54 @@ export default function Chat() {
   const [loading, setLoading] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const { update } = useWorkingMeal()
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  // Deep-link: ?label=<id> → load label into working meal
+  useEffect(() => {
+    const labelId = searchParams.get('label')
+    if (!labelId) return
+
+    void (async () => {
+      const { data, error } = await supabase
+        .from('labels')
+        .select('*')
+        .eq('id', labelId)
+        .single()
+
+      if (!error && data) {
+        const label = data as {
+          name: string
+          calories: number | null
+          protein_g: number | null
+          fat_g: number | null
+          carbs_g: number | null
+          fiber_g: number | null
+          sugar_g: number | null
+        }
+        update({
+          components: [],
+          totals: {
+            calories:  label.calories  ?? 0,
+            protein_g: label.protein_g ?? 0,
+            fat_g:     label.fat_g     ?? 0,
+            carbs_g:   label.carbs_g   ?? 0,
+            fiber_g:   label.fiber_g   ?? 0,
+            sugar_g:   label.sugar_g   ?? 0,
+          },
+          message: '',
+        })
+        const assistantMsg: Message = {
+          id: nextId(),
+          role: 'assistant',
+          text: `I've loaded ${label.name} into your working meal.`,
+        }
+        setMessages((prev) => [...prev, assistantMsg])
+      }
+      // Clear the query param regardless of success/failure
+      setSearchParams({})
+    })()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })

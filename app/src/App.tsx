@@ -3,6 +3,8 @@ import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { Header } from '@/components/Header'
 import Chat from '@/Chat'
 import LogPage from '@/pages/LogPage'
+import LibraryPage from '@/pages/LibraryPage'
+import LabelDetailPage from '@/pages/LabelDetailPage'
 
 function todayStr(): string {
   return new Date().toISOString().slice(0, 10)
@@ -37,6 +39,22 @@ function App() {
           element={
             <AppShell>
               <LogPage />
+            </AppShell>
+          }
+        />
+        <Route
+          path="/library"
+          element={
+            <AppShell>
+              <LibraryPage />
+            </AppShell>
+          }
+        />
+        <Route
+          path="/library/:id"
+          element={
+            <AppShell>
+              <LabelDetailPage />
             </AppShell>
           }
         />
