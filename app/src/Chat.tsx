@@ -59,12 +59,7 @@ export default function Chat() {
   }
 
   return (
-    <div className="flex flex-col h-dvh bg-white">
-      <header className="border-b border-gray-200 px-4 py-3 shrink-0">
-        <h1 className="text-lg font-semibold text-gray-900">Julia</h1>
-        <p className="text-xs text-gray-500">Meal tracking assistant</p>
-      </header>
-
+    <div className="flex flex-col flex-1 overflow-hidden">
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
         {messages.length === 0 && !loading && (
           <p className="text-center text-gray-400 text-sm mt-8">
