@@ -19,7 +19,7 @@ interface Row {
   badge?: 'pass' | 'fail'
 }
 
-type SaveState = 'idle' | 'naming' | 'saving' | 'saved' | 'error'
+type SaveState = 'idle' | 'naming' | 'checking' | 'conflict' | 'saving' | 'saved' | 'error'
 
 export default function MacroCard({ totals, origin, onSaved }: Props) {
   const { user } = useAuth()
@@ -27,6 +27,8 @@ export default function MacroCard({ totals, origin, onSaved }: Props) {
   const [name, setName] = useState('')
   const [savedName, setSavedName] = useState('')
   const [errorMsg, setErrorMsg] = useState('')
+  // When a name collision is found, store the existing version so we can offer choices
+  const [existingVersion, setExistingVersion] = useState<number>(1)
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -55,11 +57,35 @@ export default function MacroCard({ totals, origin, onSaved }: Props) {
     { label: 'Sugar', value: fmt(totals.sugar_g) + ' g' },
   ]
 
-  async function handleSave() {
+  /** Check for name collision, then show conflict UI or save directly. */
+  async function handleCheckAndSave() {
     const trimmed = name.trim()
     if (!trimmed) return
-    setSaveState('saving')
+    setSaveState('checking')
     setErrorMsg('')
+
+    const { data } = await supabase
+      .from('labels')
+      .select('id, version')
+      .eq('user_id', user?.id ?? '')
+      .eq('name', trimmed)
+      .order('version', { ascending: false })
+      .limit(1)
+
+    const existing = data?.[0]
+    if (existing) {
+      // Name collision — ask user what to do
+      setExistingVersion(existing.version as number)
+      setSaveState('conflict')
+    } else {
+      // No collision — save directly with version 1
+      await doInsert(trimmed, 1)
+    }
+  }
+
+  /** Insert the label with the given version. */
+  async function doInsert(trimmed: string, version: number) {
+    setSaveState('saving')
     const { error } = await supabase.from('labels').insert({
       user_id: user?.id ?? null,
       name: trimmed,
@@ -72,7 +98,7 @@ export default function MacroCard({ totals, origin, onSaved }: Props) {
       sugar_g: totals.sugar_g ?? null,
       tags: [],
       protected: false,
-      version: 1,
+      version,
     })
     if (error) {
       setErrorMsg(error.message)
@@ -84,8 +110,16 @@ export default function MacroCard({ totals, origin, onSaved }: Props) {
     }
   }
 
+  function handleSaveAsNewVersion() {
+    void doInsert(name.trim(), existingVersion + 1)
+  }
+
+  function handleSaveAsNewLabel() {
+    void doInsert(name.trim(), 1)
+  }
+
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === 'Enter') handleSave()
+    if (e.key === 'Enter') void handleCheckAndSave()
     if (e.key === 'Escape') {
       setSaveState('idle')
       setName('')
@@ -124,7 +158,7 @@ export default function MacroCard({ totals, origin, onSaved }: Props) {
             </button>
           )}
 
-          {(saveState === 'naming' || saveState === 'saving' || saveState === 'error') && (
+          {(saveState === 'naming' || saveState === 'checking' || saveState === 'saving' || saveState === 'error') && (
             <div className="flex flex-col gap-1.5">
               <div className="flex gap-1.5 items-center">
                 <input
@@ -134,20 +168,43 @@ export default function MacroCard({ totals, origin, onSaved }: Props) {
                   onChange={(e) => setName(e.target.value)}
                   onKeyDown={handleKeyDown}
                   placeholder="Name this label…"
-                  disabled={saveState === 'saving'}
+                  disabled={saveState === 'checking' || saveState === 'saving'}
                   className="flex-1 text-xs border border-gray-300 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-400 disabled:opacity-50"
                 />
                 <button
-                  onClick={handleSave}
-                  disabled={saveState === 'saving' || !name.trim()}
+                  onClick={() => void handleCheckAndSave()}
+                  disabled={saveState === 'checking' || saveState === 'saving' || !name.trim()}
                   className="text-xs bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white font-medium px-2.5 py-1.5 rounded-lg"
                 >
-                  {saveState === 'saving' ? 'Saving…' : 'Save'}
+                  {saveState === 'checking' || saveState === 'saving' ? 'Saving…' : 'Save'}
                 </button>
               </div>
               {saveState === 'error' && (
                 <p className="text-xs text-red-600">{errorMsg || 'Save failed. Try again.'}</p>
               )}
+            </div>
+          )}
+
+          {/* Version conflict resolution */}
+          {saveState === 'conflict' && (
+            <div className="flex flex-col gap-1.5">
+              <p className="text-xs text-gray-600">
+                A label named &ldquo;{name.trim()}&rdquo; already exists (v{existingVersion}). What would you like to do?
+              </p>
+              <div className="flex gap-1.5">
+                <button
+                  onClick={handleSaveAsNewVersion}
+                  className="flex-1 text-xs bg-blue-500 hover:bg-blue-600 text-white font-medium px-2 py-1.5 rounded-lg"
+                >
+                  Save as new version
+                </button>
+                <button
+                  onClick={handleSaveAsNewLabel}
+                  className="flex-1 text-xs bg-white hover:bg-gray-50 text-gray-700 font-medium px-2 py-1.5 rounded-lg border border-gray-200"
+                >
+                  Save as new label
+                </button>
+              </div>
             </div>
           )}
 
