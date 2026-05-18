@@ -112,6 +112,20 @@ export default function Chat() {
       // Run OCR via Gemini Vision
       const extracted = await ocrImage(base64, file.type)
 
+      // Populate working meal state so subsequent chat messages know about this label
+      update({
+        components: [],
+        totals: {
+          calories: extracted.calories ?? 0,
+          protein_g: extracted.protein_g ?? 0,
+          fat_g: extracted.fat_g ?? 0,
+          carbs_g: extracted.carbs_g ?? 0,
+          fiber_g: extracted.fiber_g ?? 0,
+          sugar_g: extracted.sugar_g ?? 0,
+        },
+        message: '',
+      })
+
       // Show assistant message with MacroCard
       const assistantMsg: Message = {
         id: nextId(),
