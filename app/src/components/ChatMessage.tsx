@@ -1,4 +1,5 @@
 import MacroCard from '@/components/MacroCard'
+import SaveWidget from '@/components/SaveWidget'
 import type { WorkingMealTotals } from '@/lib/gemini'
 
 export interface Message {
@@ -6,13 +7,19 @@ export interface Message {
   role: 'user' | 'assistant'
   text: string
   mealTotals?: WorkingMealTotals
+  saveWidget?: {
+    suggestedName: string
+    totals: WorkingMealTotals
+  }
+  logged?: boolean
 }
 
 interface Props {
   message: Message
+  onLogged?: (messageId: string, confirmationText: string) => void
 }
 
-export default function ChatMessage({ message }: Props) {
+export default function ChatMessage({ message, onLogged }: Props) {
   const isUser = message.role === 'user'
 
   return (
@@ -26,7 +33,17 @@ export default function ChatMessage({ message }: Props) {
       >
         {message.text}
       </div>
-      {!isUser && message.mealTotals && (
+      {!isUser && message.saveWidget && !message.logged && (
+        <SaveWidget
+          suggestedName={message.saveWidget.suggestedName}
+          totals={message.saveWidget.totals}
+          onLogged={(confirmationText) => onLogged?.(message.id, confirmationText)}
+        />
+      )}
+      {!isUser && message.logged && message.saveWidget && (
+        <MacroCard totals={message.saveWidget.totals} />
+      )}
+      {!isUser && message.mealTotals && !message.saveWidget && (
         <MacroCard totals={message.mealTotals} />
       )}
     </div>
