@@ -67,9 +67,8 @@ Always rebase onto the latest main before pushing. Even if you think you're up t
 
 ## Pull Request Rules
 
-- **Always open as draft**: `gh pr create --draft`
-- Draft signals the PR exists and is trackable but not ready for merge
-- Move to "Ready for review" only when the checklist below is complete
+- Open PRs as **ready for review** by default (`gh pr create` with no `--draft`)
+- Only use draft (`gh pr create --draft`) if the work is genuinely incomplete and needs saving mid-flight — e.g. blocked on a dependency or mid-feature
 
 ---
 
@@ -81,7 +80,6 @@ Always rebase onto the latest main before pushing. Even if you think you're up t
 - [ ] No `TODO` / `FIXME` left in `app/src/`
 - [ ] `.env` is NOT committed (only `.env.example` with blank values)
 - [ ] Commit messages follow Conventional Commits
-- [ ] PR opened as draft
 
 ---
 
