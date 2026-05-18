@@ -38,47 +38,105 @@ export default function Chat() {
   // Deep-link: ?label=<id> → load label into working meal
   useEffect(() => {
     const labelId = searchParams.get('label')
-    if (!labelId) return
+    if (labelId) {
+      void (async () => {
+        const { data, error } = await supabase
+          .from('labels')
+          .select('*')
+          .eq('id', labelId)
+          .single()
 
-    void (async () => {
-      const { data, error } = await supabase
-        .from('labels')
-        .select('*')
-        .eq('id', labelId)
-        .single()
+        if (!error && data) {
+          const label = data as {
+            name: string
+            calories: number | null
+            protein_g: number | null
+            fat_g: number | null
+            carbs_g: number | null
+            fiber_g: number | null
+            sugar_g: number | null
+          }
+          update({
+            components: [],
+            totals: {
+              calories:  label.calories  ?? 0,
+              protein_g: label.protein_g ?? 0,
+              fat_g:     label.fat_g     ?? 0,
+              carbs_g:   label.carbs_g   ?? 0,
+              fiber_g:   label.fiber_g   ?? 0,
+              sugar_g:   label.sugar_g   ?? 0,
+            },
+            message: '',
+          })
+          const assistantMsg: Message = {
+            id: nextId(),
+            role: 'assistant',
+            text: `I've loaded ${label.name} into your working meal.`,
+          }
+          setMessages((prev) => [...prev, assistantMsg])
+        }
+        // Clear the query param regardless of success/failure
+        setSearchParams({})
+      })()
+    }
 
-      if (!error && data) {
-        const label = data as {
-          name: string
-          calories: number | null
-          protein_g: number | null
-          fat_g: number | null
-          carbs_g: number | null
-          fiber_g: number | null
-          sugar_g: number | null
-        }
-        update({
-          components: [],
-          totals: {
-            calories:  label.calories  ?? 0,
-            protein_g: label.protein_g ?? 0,
-            fat_g:     label.fat_g     ?? 0,
-            carbs_g:   label.carbs_g   ?? 0,
-            fiber_g:   label.fiber_g   ?? 0,
-            sugar_g:   label.sugar_g   ?? 0,
-          },
-          message: '',
-        })
-        const assistantMsg: Message = {
-          id: nextId(),
-          role: 'assistant',
-          text: `I've loaded ${label.name} into your working meal.`,
-        }
-        setMessages((prev) => [...prev, assistantMsg])
+    // Deep-link: ?batch=<id>&portionG=<g> → load scaled batch into working meal
+    const batchId = searchParams.get('batch')
+    const portionGStr = searchParams.get('portionG')
+    if (batchId && portionGStr) {
+      const portionGrams = parseFloat(portionGStr)
+      if (!isNaN(portionGrams) && portionGrams > 0) {
+        void (async () => {
+          const { data, error } = await supabase
+            .from('batches')
+            .select('*, recipes(name)')
+            .eq('id', batchId)
+            .single()
+
+          if (!error && data) {
+            const batch = data as {
+              name: string
+              total_weight_g: number | null
+              total_macros: {
+                calories: number | null
+                protein_g: number | null
+                fat_g: number | null
+                carbs_g: number | null
+                fiber_g: number | null
+                sugar_g: number | null
+              } | null
+              recipes: { name: string } | null
+            }
+
+            if (batch.total_weight_g && batch.total_macros) {
+              const scale = portionGrams / batch.total_weight_g
+              const scale_macro = (v: number | null) => (v != null ? v * scale : 0)
+              update({
+                components: [],
+                totals: {
+                  calories:  scale_macro(batch.total_macros.calories),
+                  protein_g: scale_macro(batch.total_macros.protein_g),
+                  fat_g:     scale_macro(batch.total_macros.fat_g),
+                  carbs_g:   scale_macro(batch.total_macros.carbs_g),
+                  fiber_g:   scale_macro(batch.total_macros.fiber_g),
+                  sugar_g:   scale_macro(batch.total_macros.sugar_g),
+                },
+                message: '',
+              })
+              const recipeName = batch.recipes?.name
+              const label = recipeName ? `${recipeName} → ${batch.name}` : batch.name
+              const assistantMsg: Message = {
+                id: nextId(),
+                role: 'assistant',
+                text: `I've loaded ${portionGrams}g of ${label} into your working meal.`,
+              }
+              setMessages((prev) => [...prev, assistantMsg])
+            }
+          }
+          setSearchParams({})
+        })()
       }
-      // Clear the query param regardless of success/failure
-      setSearchParams({})
-    })()
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 

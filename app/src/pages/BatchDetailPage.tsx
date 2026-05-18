@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -61,6 +61,7 @@ const MACRO_KEYS: (keyof BatchMacros)[] = [
 
 export default function BatchDetailPage() {
   const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
 
   const [batch, setBatch] = useState<Batch | null>(null)
   const [loading, setLoading] = useState(true)
@@ -77,6 +78,9 @@ export default function BatchDetailPage() {
   const [editWeight, setEditWeight] = useState('')
   const [savingWeight, setSavingWeight] = useState(false)
   const [weightError, setWeightError] = useState<string | null>(null)
+
+  // Portion calculator
+  const [portionG, setPortionG] = useState('')
 
   // Inline edit: macros
   const [editingMacros, setEditingMacros] = useState(false)
@@ -420,6 +424,66 @@ export default function BatchDetailPage() {
                   )
                 })}
               </div>
+            </div>
+          )}
+        </div>
+        {/* Portion Calculator */}
+        <div className="space-y-2">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+            Portion Calculator
+          </p>
+          {batch.total_weight_g == null || batch.total_macros == null ? (
+            <p className="text-xs text-gray-400 italic">
+              Set total weight and macros above to enable portion scaling.
+            </p>
+          ) : (
+            <div className="border border-gray-200 rounded-xl p-4 space-y-4">
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  value={portionG}
+                  onChange={(e) => setPortionG(e.target.value)}
+                  min="0"
+                  step="any"
+                  placeholder="Portion weight"
+                  className="w-36 border border-gray-300 rounded-lg px-3 py-1.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <span className="text-sm text-gray-500">g</span>
+              </div>
+
+              {/* Scaled macros */}
+              {(() => {
+                const g = parseFloat(portionG)
+                const valid = !isNaN(g) && g > 0 && batch.total_weight_g != null && batch.total_macros != null
+                const scale = valid ? g / batch.total_weight_g! : null
+                const scaledVal = (v: number | null) =>
+                  scale != null && v != null ? (v * scale).toFixed(1) : '—'
+                return (
+                  <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+                    {MACRO_KEYS.map((key) => (
+                      <div key={key} className="flex justify-between items-baseline">
+                        <span className="text-xs text-gray-500">{macroLabel(key)}</span>
+                        <span className="text-sm font-medium text-gray-800">
+                          {scaledVal(batch.total_macros![key])}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )
+              })()}
+
+              <button
+                onClick={() => {
+                  const g = parseFloat(portionG)
+                  if (!isNaN(g) && g > 0) {
+                    navigate(`/?batch=${batch.id}&portionG=${g}`)
+                  }
+                }}
+                disabled={isNaN(parseFloat(portionG)) || parseFloat(portionG) <= 0}
+                className="text-sm px-4 py-1.5 bg-blue-500 hover:bg-blue-600 disabled:opacity-40 text-white font-medium rounded-lg transition-colors"
+              >
+                Use in meal →
+              </button>
             </div>
           )}
         </div>
