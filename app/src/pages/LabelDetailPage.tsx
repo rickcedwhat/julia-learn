@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import MacroCard from '@/components/MacroCard'
+import type { OcrTotals } from '@/lib/gemini'
 import type { Label } from '@/pages/LibraryPage'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -77,13 +78,14 @@ export default function LabelDetailPage() {
     className: 'bg-gray-100 text-gray-700',
   }
 
-  const totals = {
-    calories:  label.calories  ?? 0,
-    protein_g: label.protein_g ?? 0,
-    fat_g:     label.fat_g     ?? 0,
-    carbs_g:   label.carbs_g   ?? 0,
-    fiber_g:   label.fiber_g   ?? 0,
-    sugar_g:   label.sugar_g   ?? 0,
+  // Use OcrTotals (nullable) so MacroCard shows — for any unreadable fields
+  const totals: OcrTotals = {
+    calories:  label.calories,
+    protein_g: label.protein_g,
+    fat_g:     label.fat_g,
+    carbs_g:   label.carbs_g,
+    fiber_g:   label.fiber_g,
+    sugar_g:   label.sugar_g,
   }
 
   return (
