@@ -8,6 +8,7 @@ import LabelDetailPage from '@/pages/LabelDetailPage'
 import SettingsPage from '@/pages/SettingsPage'
 import RecipesPage from '@/pages/RecipesPage'
 import RecipeDetailPage from '@/pages/RecipeDetailPage'
+import BatchDetailPage from '@/pages/BatchDetailPage'
 
 function todayStr(): string {
   return new Date().toISOString().slice(0, 10)
@@ -82,6 +83,14 @@ function App() {
           element={
             <AppShell>
               <RecipeDetailPage />
+            </AppShell>
+          }
+        />
+        <Route
+          path="/batches/:id"
+          element={
+            <AppShell>
+              <BatchDetailPage />
             </AppShell>
           }
         />
