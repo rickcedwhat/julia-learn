@@ -1,6 +1,7 @@
 import MacroCard from '@/components/MacroCard'
 import SaveWidget from '@/components/SaveWidget'
 import type { WorkingMealTotals, OcrTotals } from '@/lib/gemini'
+import type { UserRule } from '@/hooks/useUserRules'
 
 export interface Message {
   id: string
@@ -16,6 +17,8 @@ export interface Message {
   imageDataUrl?: string
   /** OCR result to show as a MacroCard (nullable fields) */
   ocrTotals?: OcrTotals
+  /** Per-meal rules to evaluate in MacroCard badges */
+  rules?: UserRule[]
 }
 
 interface Props {
@@ -58,15 +61,15 @@ export default function ChatMessage({ message, onLogged }: Props) {
         />
       )}
       {!isUser && message.logged && message.saveWidget && (
-        <MacroCard totals={message.saveWidget.totals} />
+        <MacroCard totals={message.saveWidget.totals} rules={message.rules} />
       )}
       {!isUser && message.mealTotals && !message.saveWidget && (
-        <MacroCard totals={message.mealTotals} origin="ai_estimated" />
+        <MacroCard totals={message.mealTotals} origin="ai_estimated" rules={message.rules} />
       )}
 
       {/* OCR totals from label photo (nullable fields — shows — for missing values) */}
       {!isUser && message.ocrTotals && (
-        <MacroCard totals={message.ocrTotals} origin="verified_label" />
+        <MacroCard totals={message.ocrTotals} origin="verified_label" rules={message.rules} />
       )}
     </div>
   )
