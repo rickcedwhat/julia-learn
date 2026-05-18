@@ -6,6 +6,8 @@ import LogPage from '@/pages/LogPage'
 import LibraryPage from '@/pages/LibraryPage'
 import LabelDetailPage from '@/pages/LabelDetailPage'
 import SettingsPage from '@/pages/SettingsPage'
+import RecipesPage from '@/pages/RecipesPage'
+import RecipeDetailPage from '@/pages/RecipeDetailPage'
 
 function todayStr(): string {
   return new Date().toISOString().slice(0, 10)
@@ -64,6 +66,22 @@ function App() {
           element={
             <AppShell>
               <SettingsPage />
+            </AppShell>
+          }
+        />
+        <Route
+          path="/recipes"
+          element={
+            <AppShell>
+              <RecipesPage />
+            </AppShell>
+          }
+        />
+        <Route
+          path="/recipes/:id"
+          element={
+            <AppShell>
+              <RecipeDetailPage />
             </AppShell>
           }
         />

@@ -17,6 +17,7 @@ export function Header() {
         <Link to="/" className="font-semibold text-gray-800 hover:text-gray-600 transition-colors">Julia</Link>
         <Link to="/log" className="text-sm text-gray-500 hover:text-gray-800 transition-colors">Log</Link>
         <Link to="/library" className="text-sm text-gray-500 hover:text-gray-800 transition-colors">Library</Link>
+        <Link to="/recipes" className="text-sm text-gray-500 hover:text-gray-800 transition-colors">Recipes</Link>
         <Link to="/settings" className="text-sm text-gray-500 hover:text-gray-800 transition-colors">Settings</Link>
       </div>
       <div className="flex items-center gap-3">
