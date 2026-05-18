@@ -1,6 +1,6 @@
 import MacroCard from '@/components/MacroCard'
 import SaveWidget from '@/components/SaveWidget'
-import type { WorkingMealTotals } from '@/lib/gemini'
+import type { WorkingMealTotals, OcrTotals } from '@/lib/gemini'
 
 export interface Message {
   id: string
@@ -12,6 +12,10 @@ export interface Message {
     totals: WorkingMealTotals
   }
   logged?: boolean
+  /** base64 data URL for an image the user attached */
+  imageDataUrl?: string
+  /** OCR result to show as a MacroCard (nullable fields) */
+  ocrTotals?: OcrTotals
 }
 
 interface Props {
@@ -24,15 +28,28 @@ export default function ChatMessage({ message, onLogged }: Props) {
 
   return (
     <div className={`flex flex-col gap-2 ${isUser ? 'items-end' : 'items-start'}`}>
-      <div
-        className={`max-w-[80%] rounded-2xl px-4 py-2 whitespace-pre-wrap break-words ${
-          isUser
-            ? 'bg-blue-500 text-white ml-auto'
-            : 'bg-gray-100 text-gray-900'
-        }`}
-      >
-        {message.text}
-      </div>
+      {/* Image preview (user-attached photo) */}
+      {message.imageDataUrl && (
+        <img
+          src={message.imageDataUrl}
+          alt="Nutrition label"
+          className="max-h-64 max-w-[80%] rounded-xl border border-gray-200 shadow-sm object-contain"
+        />
+      )}
+
+      {/* Text bubble — only render if there's text */}
+      {message.text && (
+        <div
+          className={`max-w-[80%] rounded-2xl px-4 py-2 whitespace-pre-wrap break-words ${
+            isUser
+              ? 'bg-blue-500 text-white ml-auto'
+              : 'bg-gray-100 text-gray-900'
+          }`}
+        >
+          {message.text}
+        </div>
+      )}
+
       {!isUser && message.saveWidget && !message.logged && (
         <SaveWidget
           suggestedName={message.saveWidget.suggestedName}
@@ -45,6 +62,11 @@ export default function ChatMessage({ message, onLogged }: Props) {
       )}
       {!isUser && message.mealTotals && !message.saveWidget && (
         <MacroCard totals={message.mealTotals} />
+      )}
+
+      {/* OCR totals from label photo (nullable fields — shows — for missing values) */}
+      {!isUser && message.ocrTotals && (
+        <MacroCard totals={message.ocrTotals} />
       )}
     </div>
   )
