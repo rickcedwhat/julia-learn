@@ -61,12 +61,12 @@ export default function ChatMessage({ message, onLogged }: Props) {
         <MacroCard totals={message.saveWidget.totals} />
       )}
       {!isUser && message.mealTotals && !message.saveWidget && (
-        <MacroCard totals={message.mealTotals} />
+        <MacroCard totals={message.mealTotals} origin="ai_estimated" />
       )}
 
       {/* OCR totals from label photo (nullable fields — shows — for missing values) */}
       {!isUser && message.ocrTotals && (
-        <MacroCard totals={message.ocrTotals} />
+        <MacroCard totals={message.ocrTotals} origin="verified_label" />
       )}
     </div>
   )
