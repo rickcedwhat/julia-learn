@@ -100,9 +100,10 @@ This exact format, copied to clipboard via `navigator.clipboard.writeText()`.
    git fetch origin && git rebase origin/main
    ```
 2. Run the checklist from `AGENTS.md`
-3. Open as **draft**: `gh pr create --draft`
+3. Open as ready for review: `gh pr create` (no `--draft`)
+   - Only use `--draft` if the work is genuinely incomplete and needs saving mid-flight
 
-Never open a non-draft PR. See `AGENTS.md` → PR Rules.
+See `AGENTS.md` → PR Rules.
 
 ---
 
