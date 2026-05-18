@@ -21,6 +21,20 @@ export default function Chat() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, loading])
 
+  function handleLogged(messageId: string, confirmationText: string) {
+    // Mark the widget message as logged (converts to read-only summary)
+    setMessages((prev) =>
+      prev.map((m) => (m.id === messageId ? { ...m, logged: true } : m)),
+    )
+    // Append a confirmation message in the chat thread
+    const confirmMsg: Message = {
+      id: nextId(),
+      role: 'assistant',
+      text: confirmationText,
+    }
+    setMessages((prev) => [...prev, confirmMsg])
+  }
+
   async function handleSend(text: string) {
     const userMsg: Message = { id: nextId(), role: 'user', text }
     setMessages((prev) => [...prev, userMsg])
@@ -39,11 +53,19 @@ export default function Chat() {
       update(meal)
 
       const hasComponents = meal.components.length > 0
+
       const assistantMsg: Message = {
         id: nextId(),
         role: 'assistant',
         text: meal.message,
-        mealTotals: hasComponents ? meal.totals : undefined,
+        ...(meal.ready_to_log && hasComponents
+          ? {
+              saveWidget: {
+                suggestedName: meal.suggested_name ?? 'My Meal',
+                totals: meal.totals,
+              },
+            }
+          : { mealTotals: hasComponents ? meal.totals : undefined }),
       }
       setMessages((prev) => [...prev, assistantMsg])
     } catch {
@@ -67,7 +89,7 @@ export default function Chat() {
           </p>
         )}
         {messages.map((msg) => (
-          <ChatMessage key={msg.id} message={msg} />
+          <ChatMessage key={msg.id} message={msg} onLogged={handleLogged} />
         ))}
         {loading && (
           <div className="flex items-start">

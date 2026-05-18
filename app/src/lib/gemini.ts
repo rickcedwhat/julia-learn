@@ -22,6 +22,8 @@ export interface WorkingMeal {
   components: WorkingMealComponent[]
   totals: WorkingMealTotals
   message: string
+  ready_to_log?: boolean
+  suggested_name?: string
 }
 
 export interface ChatMessage {
@@ -37,13 +39,16 @@ On every turn, respond with valid JSON only (no markdown, no code fences) in thi
     { "name": "...", "weight_g": <number or null>, "calories": <number>, "protein_g": <number>, "fat_g": <number>, "carbs_g": <number>, "fiber_g": <number>, "sugar_g": <number> }
   ],
   "totals": { "calories": <number>, "protein_g": <number>, "fat_g": <number>, "carbs_g": <number>, "fiber_g": <number>, "sugar_g": <number> },
-  "message": "<your human-readable reply here>"
+  "message": "<your human-readable reply here>",
+  "ready_to_log": <boolean>,
+  "suggested_name": "<concise descriptive meal name or null>"
 }
 
-When the user hasn't mentioned any food yet, return an empty components array and zero totals, with a helpful message welcoming them.
-When the user mentions food, add it to components and compute accurate totals.
-When the user corrects something, update the relevant component and recompute totals.
-Always maintain cumulative state: if the user says "also add X", keep previous components.`
+When the user hasn't mentioned any food yet, return an empty components array and zero totals, with a helpful message welcoming them. Set ready_to_log to false and suggested_name to null.
+When the user mentions food, add it to components and compute accurate totals. Set ready_to_log to false.
+When the user corrects something, update the relevant component and recompute totals. Set ready_to_log to false.
+Always maintain cumulative state: if the user says "also add X", keep previous components.
+When the user indicates they are done and want to log the meal (e.g. "log this", "done", "save this meal", "save it", "that's it"), set ready_to_log to true and suggested_name to a concise descriptive name for the meal (e.g. "Chicken Rice Bowl", "Breakfast Oats", "Post-Workout Shake").`
 
 export async function sendMessage(history: ChatMessage[]): Promise<WorkingMeal> {
   const key = import.meta.env.VITE_GEMINI_API_KEY
