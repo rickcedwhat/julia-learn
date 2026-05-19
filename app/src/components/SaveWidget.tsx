@@ -5,6 +5,14 @@ import type { WorkingMealTotals } from '@/lib/gemini'
 
 type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack'
 
+function currentDateYYYYMMDD(): string {
+  const now = new Date()
+  const yyyy = now.getFullYear()
+  const mm = String(now.getMonth() + 1).padStart(2, '0')
+  const dd = String(now.getDate()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}`
+}
+
 function currentTimeHHMM(): string {
   const now = new Date()
   const hh = String(now.getHours()).padStart(2, '0')
@@ -42,6 +50,7 @@ export default function SaveWidget({ suggestedName, totals, onLogged, onKeepEdit
   const { user } = useAuth()
   const [name, setName] = useState(suggestedName)
   const [mealType, setMealType] = useState<MealType>(suggestMealType())
+  const [date, setDate] = useState(currentDateYYYYMMDD())
   const [time, setTime] = useState(currentTimeHHMM())
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -54,11 +63,9 @@ export default function SaveWidget({ suggestedName, totals, onLogged, onKeepEdit
     setSaving(true)
     setError(null)
 
-    // Build a full timestamptz from today's date + the chosen time
-    const today = new Date()
+    // Build a full timestamptz from the chosen date + time (parsed as local time)
     const [hh, mm] = time.split(':').map(Number)
-    today.setHours(hh, mm, 0, 0)
-    const logged_at = today.toISOString()
+    const logged_at = new Date(`${date}T${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}:00`).toISOString()
 
     const { error: dbError } = await supabase.from('meals').insert({
       user_id: user?.id ?? null,
@@ -124,17 +131,25 @@ export default function SaveWidget({ suggestedName, totals, onLogged, onKeepEdit
         </div>
       </div>
 
-      {/* Time */}
+      {/* Date & Time */}
       <div className="space-y-1">
         <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-          Time
+          Date &amp; Time
         </label>
-        <input
-          type="time"
-          value={time}
-          onChange={(e) => setTime(e.target.value)}
-          className="border border-gray-200 rounded-lg px-3 py-2 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
+        <div className="flex gap-2">
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <input
+            type="time"
+            value={time}
+            onChange={(e) => setTime(e.target.value)}
+            className="border border-gray-200 rounded-lg px-3 py-2 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
       </div>
 
       {/* Macro summary */}
