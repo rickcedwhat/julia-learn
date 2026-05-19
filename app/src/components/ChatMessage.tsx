@@ -10,6 +10,13 @@ export interface Message {
   id: string
   role: 'user' | 'assistant'
   text: string
+  /**
+   * Text sent to Gemini in place of `text` when building conversation history.
+   * Use this for messages whose display text is vague (e.g. "Here are the
+   * nutrition facts I found:") but whose Gemini history entry should carry the
+   * actual macro numbers so later turns retain full context.
+   */
+  geminiText?: string
   mealTotals?: WorkingMealTotals
   saveWidget?: {
     suggestedName: string
