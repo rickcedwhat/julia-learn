@@ -1,16 +1,24 @@
+export type AiTagKey = 'sweet_tooth' | 'savory' | 'filling'
+
 export type TagKey =
   | 'high_protein'
   | 'high_fiber'
   | 'low_fat'
   | 'calorie_dense'
   | 'low_calorie'
+  | 'sweet_tooth'
+  | 'savory'
+  | 'filling'
 
 export const TAG_META: Record<TagKey, { label: string; emoji: string; tw: string }> = {
-  high_protein:  { label: 'High Protein',  emoji: '🏋️', tw: 'text-blue-600 bg-blue-50'  },
-  high_fiber:    { label: 'High Fiber',    emoji: '🌾', tw: 'text-green-600 bg-green-50' },
-  low_fat:       { label: 'Low Fat',       emoji: '✨', tw: 'text-teal-600 bg-teal-50'   },
-  calorie_dense: { label: 'Calorie Dense', emoji: '⚡', tw: 'text-amber-600 bg-amber-50' },
-  low_calorie:   { label: 'Low Calorie',   emoji: '🥗', tw: 'text-lime-600 bg-lime-50'   },
+  high_protein:  { label: 'High Protein',  emoji: '🏋️', tw: 'text-blue-600 bg-blue-50'    },
+  high_fiber:    { label: 'High Fiber',    emoji: '🌾', tw: 'text-green-600 bg-green-50'   },
+  low_fat:       { label: 'Low Fat',       emoji: '✨', tw: 'text-teal-600 bg-teal-50'     },
+  calorie_dense: { label: 'Calorie Dense', emoji: '⚡', tw: 'text-amber-600 bg-amber-50'  },
+  low_calorie:   { label: 'Low Calorie',   emoji: '🥗', tw: 'text-lime-600 bg-lime-50'    },
+  sweet_tooth:   { label: 'Sweet Tooth',   emoji: '🍬', tw: 'text-pink-600 bg-pink-50'    },
+  savory:        { label: 'Savory',        emoji: '🧂', tw: 'text-orange-600 bg-orange-50' },
+  filling:       { label: 'Filling',       emoji: '😌', tw: 'text-purple-600 bg-purple-50' },
 }
 
 export const MAX_TAGS = 3
@@ -32,4 +40,13 @@ export function computeMathTags(m: MacroSnapshot): TagKey[] {
   if ((m.fiber_g   ?? 0) >= cal * 0.015) tags.push('high_fiber')
   if ((m.fat_g     ?? 0) <= cal * 0.03)  tags.push('low_fat')
   return tags.slice(0, MAX_TAGS)
+}
+
+/**
+ * Merge math-derived tags and AI-inferred tags into a single deduplicated list.
+ * Math tags take priority; total is capped at MAX_TAGS.
+ */
+export function mergeTags(mathTags: TagKey[], aiTags: AiTagKey[]): TagKey[] {
+  const combined = [...mathTags, ...aiTags.filter((t) => !mathTags.includes(t as TagKey))]
+  return combined.slice(0, MAX_TAGS)
 }

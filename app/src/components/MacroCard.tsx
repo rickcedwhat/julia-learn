@@ -4,7 +4,8 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import type { UserRule } from '@/hooks/useUserRules'
 import { evaluateRule } from '@/hooks/useUserRules'
-import { computeMathTags } from '@/lib/tags'
+import { computeMathTags, mergeTags } from '@/lib/tags'
+import { inferAiTags } from '@/lib/gemini'
 import TagChips from '@/components/TagChips'
 
 // ── Types & helpers ───────────────────────────────────────────────────────────
@@ -141,6 +142,16 @@ export default function MacroCard({ totals, origin, onSaved, rules, derivation }
   /** Insert the label with the given version. */
   async function doInsert(trimmed: string, version: number) {
     setSaveState('saving')
+    const mathTags = computeMathTags(totals)
+    const aiTags = await inferAiTags(trimmed, {
+      calories: totals.calories ?? null,
+      protein_g: totals.protein_g ?? null,
+      fat_g: totals.fat_g ?? null,
+      carbs_g: totals.carbs_g ?? null,
+      fiber_g: totals.fiber_g ?? null,
+      sugar_g: totals.sugar_g ?? null,
+    })
+    const tags = mergeTags(mathTags, aiTags)
     const { error } = await supabase.from('labels').insert({
       user_id: user?.id ?? null,
       name: trimmed,
@@ -151,7 +162,7 @@ export default function MacroCard({ totals, origin, onSaved, rules, derivation }
       carbs_g: totals.carbs_g ?? null,
       fiber_g: totals.fiber_g ?? null,
       sugar_g: totals.sugar_g ?? null,
-      tags: computeMathTags(totals),
+      tags,
       protected: false,
       version,
     })
