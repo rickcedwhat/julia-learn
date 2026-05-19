@@ -33,6 +33,12 @@ export default function LabelDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  // #30 – protect toggle
+  const [protecting, setProtecting] = useState(false)
+
+  // #30 – delete flow
+  const [deleteState, setDeleteState] = useState<'idle' | 'confirm' | 'protected-warn' | 'deleting'>('idle')
+
   useEffect(() => {
     if (!id) return
     void (async () => {
@@ -54,6 +60,39 @@ export default function LabelDetailPage() {
 
   function handleUseInMeal() {
     navigate(`/?label=${id}`)
+  }
+
+  async function handleToggleProtect() {
+    if (!label) return
+    setProtecting(true)
+    const { error: dbError } = await supabase
+      .from('labels')
+      .update({ protected: !label.protected })
+      .eq('id', label.id)
+    setProtecting(false)
+    if (!dbError) {
+      setLabel((prev) => prev ? { ...prev, protected: !prev.protected } : prev)
+    }
+  }
+
+  function handleDeleteClick() {
+    if (!label) return
+    if (label.protected) {
+      setDeleteState('protected-warn')
+    } else {
+      setDeleteState('confirm')
+    }
+  }
+
+  async function handleDelete() {
+    if (!label) return
+    setDeleteState('deleting')
+    const { error: dbError } = await supabase.from('labels').delete().eq('id', label.id)
+    if (!dbError) {
+      navigate('/library')
+    } else {
+      setDeleteState('idle')
+    }
   }
 
   if (loading) {
@@ -131,6 +170,76 @@ export default function LabelDetailPage() {
         >
           Use in meal
         </button>
+
+        {/* #30 – Protect toggle */}
+        <button
+          type="button"
+          onClick={handleToggleProtect}
+          disabled={protecting}
+          className={
+            label.protected
+              ? 'w-full bg-green-500 hover:bg-green-600 text-white font-medium rounded-lg px-4 py-2.5 text-sm transition-colors disabled:opacity-60'
+              : 'w-full border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium rounded-lg px-4 py-2.5 text-sm transition-colors disabled:opacity-60'
+          }
+        >
+          {label.protected ? '🔒 Protected' : '🔓 Protect this label'}
+        </button>
+
+        {/* #30 – Delete section */}
+        <div className="pt-2 border-t border-gray-100 space-y-2">
+          {deleteState === 'idle' && (
+            <button
+              type="button"
+              onClick={handleDeleteClick}
+              className="w-full border border-red-200 text-red-500 hover:bg-red-50 font-medium rounded-lg px-4 py-2.5 text-sm transition-colors"
+            >
+              Delete label
+            </button>
+          )}
+
+          {deleteState === 'confirm' && (
+            <div className="space-y-2">
+              <p className="text-sm text-gray-600 text-center">
+                Are you sure? This cannot be undone.
+              </p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  className="flex-1 bg-red-500 hover:bg-red-600 text-white font-medium rounded-lg px-4 py-2.5 text-sm transition-colors"
+                >
+                  Yes, delete
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDeleteState('idle')}
+                  className="flex-1 border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium rounded-lg px-4 py-2.5 text-sm transition-colors"
+                >
+                  No, cancel
+                </button>
+              </div>
+            </div>
+          )}
+
+          {deleteState === 'protected-warn' && (
+            <div className="space-y-2">
+              <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-center">
+                This label is protected. Unprotect it first before deleting.
+              </p>
+              <button
+                type="button"
+                onClick={() => setDeleteState('idle')}
+                className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium rounded-lg px-4 py-2.5 text-sm transition-colors"
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
+
+          {deleteState === 'deleting' && (
+            <p className="text-sm text-gray-400 text-center py-2">Deleting…</p>
+          )}
+        </div>
       </div>
     </div>
   )
