@@ -156,6 +156,15 @@ export default function LabelDetailPage() {
           </div>
         </div>
 
+        {/* Source image thumbnail (only present for OCR-scanned labels) */}
+        {label.image_url && (
+          <img
+            src={label.image_url}
+            alt="Nutrition label"
+            className="w-full max-h-52 object-cover rounded-xl border border-gray-200"
+          />
+        )}
+
         {/* Macro card */}
         <MacroCard totals={totals} />
 

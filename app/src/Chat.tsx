@@ -6,6 +6,7 @@ import ContextTray from '@/components/ContextTray'
 import LabelSearchPanel from '@/components/LabelSearchPanel'
 import { useWorkingMeal } from '@/hooks/useWorkingMeal'
 import { useUserRules } from '@/hooks/useUserRules'
+import { useAuth } from '@/hooks/useAuth'
 import { sendMessage, ocrImage } from '@/lib/gemini'
 import { supabase } from '@/lib/supabase'
 import type { Message, BatchDerivation } from '@/components/ChatMessage'
@@ -51,6 +52,16 @@ function macroSummary(
   )
 }
 
+/** Strip image data URLs before persisting — they're too large for jsonb. */
+function stripImages(msgs: Message[]): Message[] {
+  return msgs.map((m) => {
+    const stripped: Message = { ...m }
+    delete stripped.imageDataUrl
+    delete stripped.ocrImageUrl
+    return stripped
+  })
+}
+
 /** Build the leading context message injected into Gemini history. */
 function buildContextPreamble(labels: ContextLabel[]): string {
   if (labels.length === 0) return ''
@@ -64,9 +75,58 @@ export default function Chat() {
   const [libraryOpen, setLibraryOpen] = useState(false)
   const [contextLabels, setContextLabels] = useState<ContextLabel[]>([])
   const bottomRef = useRef<HTMLDivElement>(null)
+  const sessionIdRef = useRef<string | null>(null)
   const { workingMeal, update } = useWorkingMeal()
   const [searchParams, setSearchParams] = useSearchParams()
   const { rules } = useUserRules()
+  const { user } = useAuth()
+
+  // Load most recent chat session on mount (once user is known)
+  useEffect(() => {
+    if (!user) return
+    void (async () => {
+      const { data } = await supabase
+        .from('chat_sessions')
+        .select('id, messages')
+        .eq('user_id', user.id)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+
+      if (data?.[0]) {
+        sessionIdRef.current = data[0].id as string
+        setMessages(data[0].messages as Message[])
+      } else {
+        const { data: created } = await supabase
+          .from('chat_sessions')
+          .insert({ user_id: user.id, messages: [] })
+          .select('id')
+          .single()
+        if (created) sessionIdRef.current = created.id as string
+      }
+    })()
+  }, [user])
+
+  async function persistMessages(msgs: Message[]) {
+    const sid = sessionIdRef.current
+    if (!sid) return
+    await supabase
+      .from('chat_sessions')
+      .update({ messages: stripImages(msgs), updated_at: new Date().toISOString() })
+      .eq('id', sid)
+  }
+
+  async function handleNewChat() {
+    if (!user) return
+    const { data } = await supabase
+      .from('chat_sessions')
+      .insert({ user_id: user.id, messages: [] })
+      .select('id')
+      .single()
+    if (data) {
+      sessionIdRef.current = data.id as string
+      setMessages([])
+    }
+  }
 
   // ── Context helpers ────────────────────────────────────────────────────────
 
@@ -321,7 +381,8 @@ export default function Chat() {
 
   async function handleSend(text: string) {
     const userMsg: Message = { id: nextId(), role: 'user', text }
-    setMessages((prev) => [...prev, userMsg])
+    const withUser = [...messages, userMsg]
+    setMessages(withUser)
     setLoading(true)
 
     const workingTotalsSnapshot = { ...workingMeal.totals }
@@ -362,14 +423,18 @@ export default function Chat() {
             }
           : { mealTotals: hasComponents ? meal.totals : undefined }),
       }
-      setMessages((prev) => [...prev, assistantMsg])
+      const withAssistant = [...withUser, assistantMsg]
+      setMessages(withAssistant)
+      void persistMessages(withAssistant)
     } catch {
       const errorMsg: Message = {
         id: nextId(),
         role: 'assistant',
         text: 'Sorry, something went wrong. Please try again.',
       }
-      setMessages((prev) => [...prev, errorMsg])
+      const withError = [...withUser, errorMsg]
+      setMessages(withError)
+      void persistMessages(withError)
     } finally {
       setLoading(false)
     }
@@ -390,7 +455,8 @@ export default function Chat() {
         text: '',
         imageDataUrl: dataUrl,
       }
-      setMessages((prev) => [...prev, userMsg])
+      const withUser = [...messages, userMsg]
+      setMessages(withUser)
 
       const extracted = await ocrImage(base64, file.type)
 
@@ -422,16 +488,21 @@ export default function Chat() {
         text: 'Here are the nutrition facts I found:',
         geminiText: macroSummary('scanned label', extracted),
         ocrTotals: extracted,
+        ocrImageUrl: dataUrl,
         rules,
       }
-      setMessages((prev) => [...prev, assistantMsg])
+      const withAssistant = [...withUser, assistantMsg]
+      setMessages(withAssistant)
+      void persistMessages(withAssistant)
     } catch {
       const errorMsg: Message = {
         id: nextId(),
         role: 'assistant',
         text: 'Sorry, I could not read that nutrition label. Please try a clearer photo.',
       }
-      setMessages((prev) => [...prev, errorMsg])
+      const withError = [...messages, errorMsg]
+      setMessages(withError)
+      void persistMessages(withError)
     } finally {
       setLoading(false)
     }
@@ -441,6 +512,17 @@ export default function Chat() {
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
+      {messages.length > 0 && (
+        <div className="flex justify-end px-4 pt-2">
+          <button
+            type="button"
+            onClick={() => { void handleNewChat() }}
+            className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            New chat
+          </button>
+        </div>
+      )}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
         {messages.length === 0 && !loading && (
           <p className="text-center text-gray-400 text-sm mt-8">
