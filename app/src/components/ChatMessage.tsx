@@ -1,7 +1,10 @@
 import MacroCard from '@/components/MacroCard'
+import type { BatchDerivation } from '@/components/MacroCard'
 import SaveWidget from '@/components/SaveWidget'
 import type { WorkingMealTotals, OcrTotals } from '@/lib/gemini'
 import type { UserRule } from '@/hooks/useUserRules'
+
+export type { BatchDerivation }
 
 export interface Message {
   id: string
@@ -19,6 +22,8 @@ export interface Message {
   ocrTotals?: OcrTotals
   /** Per-meal rules to evaluate in MacroCard badges */
   rules?: UserRule[]
+  /** Batch portion scaling derivation to show in meal card */
+  batchDerivation?: BatchDerivation
 }
 
 interface Props {
@@ -64,12 +69,12 @@ export default function ChatMessage({ message, onLogged }: Props) {
         <MacroCard totals={message.saveWidget.totals} rules={message.rules} />
       )}
       {!isUser && message.mealTotals && !message.saveWidget && (
-        <MacroCard totals={message.mealTotals} origin="ai_estimated" rules={message.rules} />
+        <MacroCard totals={message.mealTotals} origin="ai_estimated" rules={message.rules} derivation={message.batchDerivation} />
       )}
 
       {/* OCR totals from label photo (nullable fields — shows — for missing values) */}
       {!isUser && message.ocrTotals && (
-        <MacroCard totals={message.ocrTotals} origin="verified_label" rules={message.rules} />
+        <MacroCard totals={message.ocrTotals} origin="verified_label" rules={message.rules} derivation={message.batchDerivation} />
       )}
     </div>
   )
