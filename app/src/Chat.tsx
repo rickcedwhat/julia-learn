@@ -2,17 +2,32 @@ import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import ChatMessage from '@/components/ChatMessage'
 import ChatInput from '@/components/ChatInput'
+import ContextTray from '@/components/ContextTray'
 import LabelSearchPanel from '@/components/LabelSearchPanel'
 import { useWorkingMeal } from '@/hooks/useWorkingMeal'
 import { useUserRules } from '@/hooks/useUserRules'
 import { sendMessage, ocrImage } from '@/lib/gemini'
 import { supabase } from '@/lib/supabase'
 import type { Message, BatchDerivation } from '@/components/ChatMessage'
-import type { ChatMessage as GeminiMessage } from '@/lib/gemini'
+import type { ContextLabel } from '@/components/ContextTray'
+import type { ChatMessage as GeminiMessage, OcrTotals, WorkingMealTotals } from '@/lib/gemini'
 
 let idCounter = 0
 function nextId() {
   return String(++idCounter)
+}
+
+function readFileAsBase64(file: File): Promise<{ base64: string; dataUrl: string }> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const dataUrl = reader.result as string
+      const base64 = dataUrl.split(',')[1]
+      resolve({ base64, dataUrl })
+    }
+    reader.onerror = () => reject(reader.error)
+    reader.readAsDataURL(file)
+  })
 }
 
 /** Build a macro summary string that Gemini can reference in later turns. */
@@ -36,30 +51,70 @@ function macroSummary(
   )
 }
 
-function readFileAsBase64(file: File): Promise<{ base64: string; dataUrl: string }> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => {
-      const dataUrl = reader.result as string
-      const base64 = dataUrl.split(',')[1]
-      resolve({ base64, dataUrl })
-    }
-    reader.onerror = () => reject(reader.error)
-    reader.readAsDataURL(file)
-  })
+/** Build the leading context message injected into Gemini history. */
+function buildContextPreamble(labels: ContextLabel[]): string {
+  if (labels.length === 0) return ''
+  const list = labels.map((l) => macroSummary(l.name, l.macros)).join('\n')
+  return `The following nutrition labels are loaded in context:\n${list}\n\nUse these values when the user mentions these foods.`
 }
 
 export default function Chat() {
   const [messages, setMessages] = useState<Message[]>([])
   const [loading, setLoading] = useState(false)
   const [libraryOpen, setLibraryOpen] = useState(false)
+  const [contextLabels, setContextLabels] = useState<ContextLabel[]>([])
   const bottomRef = useRef<HTMLDivElement>(null)
   const { workingMeal, update } = useWorkingMeal()
   const [searchParams, setSearchParams] = useSearchParams()
   const { rules } = useUserRules()
 
-  // Deep-link: ?label=<id> → load label into working meal
+  // ── Context helpers ────────────────────────────────────────────────────────
+
+  function addToContext(label: ContextLabel) {
+    setContextLabels((prev) => {
+      if (prev.some((l) => l.key === label.key)) return prev
+      return [...prev, label]
+    })
+  }
+
+  function removeFromContext(key: string) {
+    setContextLabels((prev) => prev.filter((l) => l.key !== key))
+  }
+
+  /** Called by MacroCard after a successful library save. */
+  function handleLabelSaved(savedId: string, savedName: string) {
+    setContextLabels((prev) => {
+      const existing = prev.find((l) => l.name === savedName || l.id === savedId)
+      if (existing) {
+        return prev.map((l) =>
+          l.name === savedName || l.id === savedId
+            ? { ...l, id: savedId, name: savedName }
+            : l,
+        )
+      }
+      return prev
+    })
+  }
+
+  /** Called when user clicks "Log Meal" on a MacroCard — injects a SaveWidget. */
+  function handleLogMealRequest(totals: WorkingMealTotals | OcrTotals) {
+    const widgetMsg: Message = {
+      id: nextId(),
+      role: 'assistant',
+      text: '',
+      saveWidget: {
+        suggestedName: '',
+        totals: totals as WorkingMealTotals,
+      },
+      rules,
+    }
+    setMessages((prev) => [...prev, widgetMsg])
+  }
+
+  // ── Deep-links ─────────────────────────────────────────────────────────────
+
   useEffect(() => {
+    // ?label=<id> → silently load into context tray
     const labelId = searchParams.get('label')
     if (labelId) {
       void (async () => {
@@ -91,20 +146,26 @@ export default function Chat() {
             },
             message: '',
           })
-          const assistantMsg: Message = {
-            id: nextId(),
-            role: 'assistant',
-            text: `I've loaded ${label.name} into your working meal.`,
-            geminiText: macroSummary(label.name, label),
-          }
-          setMessages((prev) => [...prev, assistantMsg])
+          addToContext({
+            key: labelId,
+            id: labelId,
+            name: label.name,
+            macros: {
+              calories:  label.calories,
+              protein_g: label.protein_g,
+              fat_g:     label.fat_g,
+              carbs_g:   label.carbs_g,
+              fiber_g:   label.fiber_g,
+              sugar_g:   label.sugar_g,
+            },
+            origin: 'library',
+          })
         }
-        // Clear the query param regardless of success/failure
         setSearchParams({})
       })()
     }
 
-    // Deep-link: ?batch=<id>&portionG=<g> → load scaled batch into working meal
+    // ?batch=<id>&portionG=<g> → show MacroCard + add to context tray
     const batchId = searchParams.get('batch')
     const portionGStr = searchParams.get('portionG')
     if (batchId && portionGStr) {
@@ -134,34 +195,50 @@ export default function Chat() {
 
             if (batch.total_weight_g && batch.total_macros) {
               const scale = portionGrams / batch.total_weight_g
-              const scale_macro = (v: number | null) => (v != null ? v * scale : 0)
-              const scaledTotals = {
-                calories:  scale_macro(batch.total_macros.calories),
-                protein_g: scale_macro(batch.total_macros.protein_g),
-                fat_g:     scale_macro(batch.total_macros.fat_g),
-                carbs_g:   scale_macro(batch.total_macros.carbs_g),
-                fiber_g:   scale_macro(batch.total_macros.fiber_g),
-                sugar_g:   scale_macro(batch.total_macros.sugar_g),
+              const sm = (v: number | null) => (v != null ? v * scale : null)
+              const scaledMacros: OcrTotals = {
+                calories:  sm(batch.total_macros.calories),
+                protein_g: sm(batch.total_macros.protein_g),
+                fat_g:     sm(batch.total_macros.fat_g),
+                carbs_g:   sm(batch.total_macros.carbs_g),
+                fiber_g:   sm(batch.total_macros.fiber_g),
+                sugar_g:   sm(batch.total_macros.sugar_g),
               }
               update({
                 components: [],
-                totals: scaledTotals,
+                totals: {
+                  calories:  scaledMacros.calories  ?? 0,
+                  protein_g: scaledMacros.protein_g ?? 0,
+                  fat_g:     scaledMacros.fat_g     ?? 0,
+                  carbs_g:   scaledMacros.carbs_g   ?? 0,
+                  fiber_g:   scaledMacros.fiber_g   ?? 0,
+                  sugar_g:   scaledMacros.sugar_g   ?? 0,
+                },
                 message: '',
               })
               const recipeName = batch.recipes?.name
-              const label = recipeName ? `${recipeName} → ${batch.name}` : batch.name
+              const displayName = recipeName
+                ? `${portionGrams}g · ${recipeName} → ${batch.name}`
+                : `${portionGrams}g · ${batch.name}`
               const derivation: BatchDerivation = {
                 portionG: portionGrams,
                 totalWeightG: batch.total_weight_g,
                 batchName: batch.name,
                 recipeName: recipeName ?? undefined,
               }
+              addToContext({
+                key: `batch-${batchId}-${portionGrams}`,
+                name: displayName,
+                macros: scaledMacros,
+                origin: 'batch',
+              })
+              // Still show the MacroCard in chat for the scaled portion breakdown
               const assistantMsg: Message = {
                 id: nextId(),
                 role: 'assistant',
-                text: `I've loaded ${portionGrams}g of ${label} into your working meal.`,
-                geminiText: macroSummary(`${portionGrams}g of ${label}`, scaledTotals),
-                ocrTotals: scaledTotals,
+                text: '',
+                geminiText: macroSummary(displayName, scaledMacros),
+                ocrTotals: scaledMacros,
                 rules,
                 batchDerivation: derivation,
               }
@@ -180,11 +257,9 @@ export default function Chat() {
   }, [messages, loading])
 
   function handleLogged(messageId: string, confirmationText: string) {
-    // Mark the widget message as logged (converts to read-only summary)
     setMessages((prev) =>
       prev.map((m) => (m.id === messageId ? { ...m, logged: true } : m)),
     )
-    // Append a confirmation message in the chat thread
     const confirmMsg: Message = {
       id: nextId(),
       role: 'assistant',
@@ -192,6 +267,8 @@ export default function Chat() {
     }
     setMessages((prev) => [...prev, confirmMsg])
   }
+
+  // ── Library panel select ───────────────────────────────────────────────────
 
   async function handleLibrarySelect(labelId: string, labelName: string) {
     const { data, error } = await supabase
@@ -222,32 +299,42 @@ export default function Chat() {
         },
         message: '',
       })
-      const assistantMsg: Message = {
-        id: nextId(),
-        role: 'assistant',
-        text: `I've loaded "${labelName}" into your working meal. You can tell me how much you had, or add more items.`,
-        geminiText: macroSummary(label.name, label),
-        rules,
-      }
-      setMessages((prev) => [...prev, assistantMsg])
+      addToContext({
+        key: labelId,
+        id: labelId,
+        name: labelName,
+        macros: {
+          calories:  label.calories,
+          protein_g: label.protein_g,
+          fat_g:     label.fat_g,
+          carbs_g:   label.carbs_g,
+          fiber_g:   label.fiber_g,
+          sugar_g:   label.sugar_g,
+        },
+        origin: 'library',
+      })
     }
     setLibraryOpen(false)
   }
+
+  // ── Chat send ──────────────────────────────────────────────────────────────
 
   async function handleSend(text: string) {
     const userMsg: Message = { id: nextId(), role: 'user', text }
     setMessages((prev) => [...prev, userMsg])
     setLoading(true)
 
-    // Snapshot working meal totals BEFORE Gemini call so we can fall back to
-    // the accumulated state if Gemini re-estimates with empty components.
     const workingTotalsSnapshot = { ...workingMeal.totals }
 
+    // Prepend loaded context labels as the first model turn so Gemini never
+    // loses track of scanned/loaded nutrition data, even after many exchanges.
+    const contextPreamble = buildContextPreamble(contextLabels)
     const history: GeminiMessage[] = [
+      ...(contextPreamble
+        ? [{ role: 'model' as const, text: contextPreamble }]
+        : []),
       ...messages.map((m) => ({
         role: m.role === 'user' ? ('user' as const) : ('model' as const),
-        // Use geminiText when available — it carries actual macro numbers for
-        // OCR / library-load messages whose display text is intentionally vague.
         text: m.geminiText ?? m.text,
       })),
       { role: 'user', text },
@@ -258,9 +345,6 @@ export default function Chat() {
       update(meal)
 
       const hasComponents = meal.components.length > 0
-
-      // Prefer Gemini's fresh totals when it returned components with positive
-      // calories; otherwise fall back to the pre-call working meal snapshot.
       const widgetTotals =
         hasComponents && meal.totals.calories > 0 ? meal.totals : workingTotalsSnapshot
 
@@ -291,6 +375,8 @@ export default function Chat() {
     }
   }
 
+  // ── Photo / OCR ────────────────────────────────────────────────────────────
+
   async function handlePhoto(file: File) {
     if (loading) return
     setLoading(true)
@@ -298,7 +384,6 @@ export default function Chat() {
     try {
       const { base64, dataUrl } = await readFileAsBase64(file)
 
-      // Show image preview immediately as a user message
       const userMsg: Message = {
         id: nextId(),
         role: 'user',
@@ -307,10 +392,8 @@ export default function Chat() {
       }
       setMessages((prev) => [...prev, userMsg])
 
-      // Run OCR via Gemini Vision
       const extracted = await ocrImage(base64, file.type)
 
-      // Populate working meal state so subsequent chat messages know about this label
       update({
         components: [],
         totals: {
@@ -324,13 +407,19 @@ export default function Chat() {
         message: '',
       })
 
-      // Show assistant message with MacroCard
+      // Add to context tray — name updates to the saved name when user saves to library
+      const ocrKey = `ocr-${nextId()}`
+      addToContext({
+        key: ocrKey,
+        name: 'Scanned label',
+        macros: extracted,
+        origin: 'scanned',
+      })
+
       const assistantMsg: Message = {
         id: nextId(),
         role: 'assistant',
         text: 'Here are the nutrition facts I found:',
-        // geminiText carries the actual macro numbers so Gemini retains this
-        // context in subsequent turns (the display text is intentionally brief).
         geminiText: macroSummary('scanned label', extracted),
         ocrTotals: extracted,
         rules,
@@ -348,6 +437,8 @@ export default function Chat() {
     }
   }
 
+  // ── Render ─────────────────────────────────────────────────────────────────
+
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
@@ -357,7 +448,13 @@ export default function Chat() {
           </p>
         )}
         {messages.map((msg) => (
-          <ChatMessage key={msg.id} message={msg} onLogged={handleLogged} />
+          <ChatMessage
+            key={msg.id}
+            message={msg}
+            onLogged={handleLogged}
+            onLabelSaved={handleLabelSaved}
+            onLogMeal={handleLogMealRequest}
+          />
         ))}
         {loading && (
           <div className="flex items-start">
@@ -373,6 +470,11 @@ export default function Chat() {
         open={libraryOpen}
         onClose={() => setLibraryOpen(false)}
         onSelect={handleLibrarySelect}
+      />
+      <ContextTray
+        labels={contextLabels}
+        onRemove={removeFromContext}
+        onOpenLibrary={() => setLibraryOpen(true)}
       />
       <ChatInput
         onSend={handleSend}
