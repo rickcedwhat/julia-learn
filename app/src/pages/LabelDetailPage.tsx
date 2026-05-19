@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import MacroCard from '@/components/MacroCard'
+import TagChips from '@/components/TagChips'
 import type { OcrTotals } from '@/lib/gemini'
 import type { Label } from '@/pages/LibraryPage'
+import type { TagKey } from '@/lib/tags'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -117,6 +119,9 @@ export default function LabelDetailPage() {
 
         {/* Macro card */}
         <MacroCard totals={totals} />
+
+        {/* Tag chips from stored tags */}
+        <TagChips tags={(label.tags ?? []) as TagKey[]} />
 
         {/* Actions */}
         <button

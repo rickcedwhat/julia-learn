@@ -4,6 +4,8 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import type { UserRule } from '@/hooks/useUserRules'
 import { evaluateRule } from '@/hooks/useUserRules'
+import { computeMathTags } from '@/lib/tags'
+import TagChips from '@/components/TagChips'
 
 // ── Types & helpers ───────────────────────────────────────────────────────────
 
@@ -97,6 +99,8 @@ export default function MacroCard({ totals, origin, onSaved, rules, derivation }
     }
   }
 
+  const mathTags = computeMathTags(totals)
+
   const rows: Row[] = [
     { label: 'Calories',    value: fmt(totals.calories)  + ' kcal', badge: getBadge('calories') },
     { label: 'Protein',     value: fmt(totals.protein_g) + ' g',    badge: getBadge('protein')  },
@@ -147,7 +151,7 @@ export default function MacroCard({ totals, origin, onSaved, rules, derivation }
       carbs_g: totals.carbs_g ?? null,
       fiber_g: totals.fiber_g ?? null,
       sugar_g: totals.sugar_g ?? null,
-      tags: [],
+      tags: computeMathTags(totals),
       protected: false,
       version,
     })
@@ -207,6 +211,9 @@ export default function MacroCard({ totals, origin, onSaved, rules, derivation }
           </div>
         ))}
       </div>
+
+      {/* Math-derived tag chips */}
+      <TagChips tags={mathTags} />
 
       {/* Save to Library section */}
       {origin && (

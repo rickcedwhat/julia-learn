@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import Fuse from 'fuse.js'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
+import TagChips from '@/components/TagChips'
+import type { TagKey } from '@/lib/tags'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -121,9 +123,12 @@ export default function LibraryPage() {
                   {badge.label}
                 </span>
 
-                {/* Name */}
-                <span className="flex-1 font-medium text-gray-900 truncate">
-                  {label.name}
+                {/* Name + tags */}
+                <span className="flex-1 min-w-0">
+                  <span className="block font-medium text-gray-900 truncate">{label.name}</span>
+                  {label.tags.length > 0 && (
+                    <TagChips tags={label.tags as TagKey[]} />
+                  )}
                 </span>
 
                 {/* Version badge (only when > 1) */}
