@@ -21,13 +21,27 @@ interface Meal {
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function todayStr(): string {
-  return new Date().toISOString().slice(0, 10)
+  const d = new Date()
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
 
 function offsetDate(dateStr: string, days: number): string {
-  const d = new Date(`${dateStr}T12:00:00`)
+  const d = new Date(`${dateStr}T12:00:00`) // noon local time avoids DST edge cases
   d.setDate(d.getDate() + days)
-  return d.toISOString().slice(0, 10)
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function dayBounds(dateStr: string): { start: string; end: string } {
+  // Parsed as local time (no tz suffix), then toISOString() gives UTC equivalent
+  const start = new Date(`${dateStr}T00:00:00`)
+  const end = new Date(`${dateStr}T23:59:59.999`)
+  return { start: start.toISOString(), end: end.toISOString() }
 }
 
 function formatDate(dateStr: string): string {
@@ -243,12 +257,13 @@ export default function LogPage() {
   async function fetchMeals() {
     if (!user) return
     setLoading(true)
+    const { start, end } = dayBounds(activeDate)
     const { data, error } = await supabase
       .from('meals')
       .select('*')
       .eq('user_id', user.id)
-      .gte('logged_at', `${activeDate}T00:00:00`)
-      .lte('logged_at', `${activeDate}T23:59:59`)
+      .gte('logged_at', start)
+      .lte('logged_at', end)
       .order('logged_at', { ascending: true })
 
     if (error) {
