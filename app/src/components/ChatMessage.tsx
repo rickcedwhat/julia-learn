@@ -36,9 +36,13 @@ export interface Message {
 interface Props {
   message: Message
   onLogged?: (messageId: string, confirmationText: string) => void
+  /** Called when a MacroCard saves a label to the library (to add it to context tray). */
+  onLabelSaved?: (savedId: string, savedName: string) => void
+  /** Called when the user clicks "Log Meal" on a MacroCard. */
+  onLogMeal?: (totals: WorkingMealTotals | OcrTotals) => void
 }
 
-export default function ChatMessage({ message, onLogged }: Props) {
+export default function ChatMessage({ message, onLogged, onLabelSaved, onLogMeal }: Props) {
   const isUser = message.role === 'user'
 
   return (
@@ -76,12 +80,26 @@ export default function ChatMessage({ message, onLogged }: Props) {
         <MacroCard totals={message.saveWidget.totals} rules={message.rules} />
       )}
       {!isUser && message.mealTotals && !message.saveWidget && (
-        <MacroCard totals={message.mealTotals} origin="ai_estimated" rules={message.rules} derivation={message.batchDerivation} />
+        <MacroCard
+          totals={message.mealTotals}
+          origin="ai_estimated"
+          rules={message.rules}
+          derivation={message.batchDerivation}
+          onSaved={onLabelSaved}
+          onLogMeal={onLogMeal ? () => onLogMeal(message.mealTotals!) : undefined}
+        />
       )}
 
       {/* OCR totals from label photo (nullable fields — shows — for missing values) */}
       {!isUser && message.ocrTotals && (
-        <MacroCard totals={message.ocrTotals} origin="verified_label" rules={message.rules} derivation={message.batchDerivation} />
+        <MacroCard
+          totals={message.ocrTotals}
+          origin="verified_label"
+          rules={message.rules}
+          derivation={message.batchDerivation}
+          onSaved={onLabelSaved}
+          onLogMeal={onLogMeal ? () => onLogMeal(message.ocrTotals!) : undefined}
+        />
       )}
     </div>
   )

@@ -20,7 +20,13 @@ export interface BatchDerivation {
 interface Props {
   totals: WorkingMealTotals | OcrTotals
   origin?: 'ai_estimated' | 'verified_label'
-  onSaved?: () => void
+  /**
+   * Called after a successful save with the new label's id and name so the
+   * caller can add it to the chat context tray.
+   */
+  onSaved?: (savedId: string, savedName: string) => void
+  /** Called when the user clicks "Log Meal" — parent handles the log widget. */
+  onLogMeal?: () => void
   /** Per-meal rules to evaluate. If omitted, falls back to hardcoded protein/fiber checks. */
   rules?: UserRule[]
   /** Batch portion scaling info to show at top of card */
@@ -54,7 +60,7 @@ type SaveState = 'idle' | 'naming' | 'checking' | 'conflict' | 'saving' | 'saved
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function MacroCard({ totals, origin, onSaved, rules, derivation }: Props) {
+export default function MacroCard({ totals, origin, onSaved, onLogMeal, rules, derivation }: Props) {
   const { user } = useAuth()
   const [saveState, setSaveState] = useState<SaveState>('idle')
   const [name, setName] = useState('')
@@ -152,27 +158,31 @@ export default function MacroCard({ totals, origin, onSaved, rules, derivation }
       sugar_g: totals.sugar_g ?? null,
     })
     const tags = mergeTags(mathTags, aiTags)
-    const { error } = await supabase.from('labels').insert({
-      user_id: user?.id ?? null,
-      name: trimmed,
-      origin: origin!,
-      calories: totals.calories ?? null,
-      protein_g: totals.protein_g ?? null,
-      fat_g: totals.fat_g ?? null,
-      carbs_g: totals.carbs_g ?? null,
-      fiber_g: totals.fiber_g ?? null,
-      sugar_g: totals.sugar_g ?? null,
-      tags,
-      protected: false,
-      version,
-    })
+    const { data: insertData, error } = await supabase
+      .from('labels')
+      .insert({
+        user_id: user?.id ?? null,
+        name: trimmed,
+        origin: origin!,
+        calories: totals.calories ?? null,
+        protein_g: totals.protein_g ?? null,
+        fat_g: totals.fat_g ?? null,
+        carbs_g: totals.carbs_g ?? null,
+        fiber_g: totals.fiber_g ?? null,
+        sugar_g: totals.sugar_g ?? null,
+        tags,
+        protected: false,
+        version,
+      })
+      .select('id')
+      .single()
     if (error) {
       setErrorMsg(error.message)
       setSaveState('error')
     } else {
       setSavedName(trimmed)
       setSaveState('saved')
-      onSaved?.()
+      onSaved?.(insertData.id as string, trimmed)
     }
   }
 
@@ -226,19 +236,31 @@ export default function MacroCard({ totals, origin, onSaved, rules, derivation }
       {/* Math-derived tag chips */}
       <TagChips tags={mathTags} />
 
-      {/* Save to Library section */}
-      {origin && (
+      {/* Actions: Save to Library + Log Meal */}
+      {(origin || onLogMeal) && (
         <div className="mt-3 pt-2 border-t border-gray-100">
           {saveState === 'idle' && (
-            <button
-              onClick={() => setSaveState('naming')}
-              className="text-xs text-blue-600 hover:text-blue-800 font-medium"
-            >
-              Save to Library
-            </button>
+            <div className="flex items-center gap-3">
+              {origin && (
+                <button
+                  onClick={() => setSaveState('naming')}
+                  className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                >
+                  Save to Library
+                </button>
+              )}
+              {onLogMeal && (
+                <button
+                  onClick={onLogMeal}
+                  className="text-xs bg-blue-500 hover:bg-blue-600 text-white font-medium px-2.5 py-1 rounded-lg transition-colors"
+                >
+                  Log Meal
+                </button>
+              )}
+            </div>
           )}
 
-          {(saveState === 'naming' || saveState === 'checking' || saveState === 'saving' || saveState === 'error') && (
+          {origin && (saveState === 'naming' || saveState === 'checking' || saveState === 'saving' || saveState === 'error') && (
             <div className="flex flex-col gap-1.5">
               <div className="flex gap-1.5 items-center">
                 <input
@@ -266,7 +288,7 @@ export default function MacroCard({ totals, origin, onSaved, rules, derivation }
           )}
 
           {/* Version conflict resolution */}
-          {saveState === 'conflict' && (
+          {origin && saveState === 'conflict' && (
             <div className="flex flex-col gap-1.5">
               <p className="text-xs text-gray-600">
                 A label named &ldquo;{name.trim()}&rdquo; already exists (v{existingVersion}). What would you like to do?
@@ -288,7 +310,7 @@ export default function MacroCard({ totals, origin, onSaved, rules, derivation }
             </div>
           )}
 
-          {saveState === 'saved' && (
+          {origin && saveState === 'saved' && (
             <p className="text-xs text-green-700 font-medium">Saved as {savedName}!</p>
           )}
         </div>
