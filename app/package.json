@@ -8,7 +8,9 @@
     "build": "tsc -b && vite build",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --max-warnings=0",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.105.4",
@@ -19,6 +21,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.25.1",
+    "@playwright/test": "^1.60.0",
     "@types/node": "^25.8.0",
     "@types/react": "^18.3.20",
     "@types/react-dom": "^18.3.6",
