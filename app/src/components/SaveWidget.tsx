@@ -157,7 +157,10 @@ export default function SaveWidget({ suggestedName, totals, onLogged, onKeepEdit
       </div>
 
       {error && (
-        <p className="text-xs text-red-600">{error}</p>
+        <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+          <p className="text-sm text-amber-800 font-medium">Failed to save meal</p>
+          <p className="text-xs text-amber-700 mt-0.5">{error}</p>
+        </div>
       )}
 
       {/* Actions */}

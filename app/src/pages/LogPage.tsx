@@ -238,6 +238,7 @@ export default function LogPage() {
 
   const [meals, setMeals] = useState<Meal[]>([])
   const [loading, setLoading] = useState(true)
+  const [fetchError, setFetchError] = useState<string | null>(null)
 
   async function fetchMeals() {
     if (!user) return
@@ -250,8 +251,11 @@ export default function LogPage() {
       .lte('logged_at', `${activeDate}T23:59:59`)
       .order('logged_at', { ascending: true })
 
-    if (!error && data) {
+    if (error) {
+      setFetchError(error.message)
+    } else if (data) {
       setMeals(data as Meal[])
+      setFetchError(null)
     }
     setLoading(false)
   }
@@ -297,6 +301,11 @@ export default function LogPage() {
       </div>
 
       <div className="px-4 py-4 space-y-3 max-w-2xl mx-auto">
+        {fetchError && (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-sm text-amber-800">
+            Could not load meals: {fetchError}
+          </div>
+        )}
         {loading ? (
           <p className="text-center text-gray-400 py-12">Loading…</p>
         ) : meals.length === 0 ? (

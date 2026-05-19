@@ -31,7 +31,7 @@ export default function Chat() {
   const [messages, setMessages] = useState<Message[]>([])
   const [loading, setLoading] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
-  const { update } = useWorkingMeal()
+  const { workingMeal, update } = useWorkingMeal()
   const [searchParams, setSearchParams] = useSearchParams()
   const { rules } = useUserRules()
 
@@ -173,6 +173,10 @@ export default function Chat() {
     setMessages((prev) => [...prev, userMsg])
     setLoading(true)
 
+    // Snapshot working meal totals BEFORE Gemini call so we can fall back to
+    // the accumulated state if Gemini re-estimates with empty components.
+    const workingTotalsSnapshot = { ...workingMeal.totals }
+
     const history: GeminiMessage[] = [
       ...messages.map((m) => ({
         role: m.role === 'user' ? ('user' as const) : ('model' as const),
@@ -187,6 +191,11 @@ export default function Chat() {
 
       const hasComponents = meal.components.length > 0
 
+      // Prefer Gemini's fresh totals when it returned components with positive
+      // calories; otherwise fall back to the pre-call working meal snapshot.
+      const widgetTotals =
+        hasComponents && meal.totals.calories > 0 ? meal.totals : workingTotalsSnapshot
+
       const assistantMsg: Message = {
         id: nextId(),
         role: 'assistant',
@@ -196,7 +205,7 @@ export default function Chat() {
           ? {
               saveWidget: {
                 suggestedName: meal.suggested_name ?? 'My Meal',
-                totals: meal.totals,
+                totals: widgetTotals,
               },
             }
           : { mealTotals: hasComponents ? meal.totals : undefined }),
