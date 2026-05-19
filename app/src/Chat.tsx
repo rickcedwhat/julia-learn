@@ -15,6 +15,27 @@ function nextId() {
   return String(++idCounter)
 }
 
+/** Build a macro summary string that Gemini can reference in later turns. */
+function macroSummary(
+  name: string,
+  t: {
+    calories?: number | null
+    protein_g?: number | null
+    fat_g?: number | null
+    carbs_g?: number | null
+    fiber_g?: number | null
+    sugar_g?: number | null
+  },
+): string {
+  const r = (v: number | null | undefined) => (v != null ? Math.round(v) : '?')
+  return (
+    `Nutrition info for "${name}": ` +
+    `${r(t.calories)} kcal, ${r(t.protein_g)}g protein, ${r(t.fat_g)}g fat, ` +
+    `${r(t.carbs_g)}g carbs, ${r(t.fiber_g)}g fiber, ${r(t.sugar_g)}g sugar. ` +
+    `Use these exact values when the user describes how much of this they ate.`
+  )
+}
+
 function readFileAsBase64(file: File): Promise<{ base64: string; dataUrl: string }> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
@@ -74,6 +95,7 @@ export default function Chat() {
             id: nextId(),
             role: 'assistant',
             text: `I've loaded ${label.name} into your working meal.`,
+            geminiText: macroSummary(label.name, label),
           }
           setMessages((prev) => [...prev, assistantMsg])
         }
@@ -138,6 +160,7 @@ export default function Chat() {
                 id: nextId(),
                 role: 'assistant',
                 text: `I've loaded ${portionGrams}g of ${label} into your working meal.`,
+                geminiText: macroSummary(`${portionGrams}g of ${label}`, scaledTotals),
                 ocrTotals: scaledTotals,
                 rules,
                 batchDerivation: derivation,
@@ -203,6 +226,7 @@ export default function Chat() {
         id: nextId(),
         role: 'assistant',
         text: `I've loaded "${labelName}" into your working meal. You can tell me how much you had, or add more items.`,
+        geminiText: macroSummary(label.name, label),
         rules,
       }
       setMessages((prev) => [...prev, assistantMsg])
@@ -222,7 +246,9 @@ export default function Chat() {
     const history: GeminiMessage[] = [
       ...messages.map((m) => ({
         role: m.role === 'user' ? ('user' as const) : ('model' as const),
-        text: m.text,
+        // Use geminiText when available — it carries actual macro numbers for
+        // OCR / library-load messages whose display text is intentionally vague.
+        text: m.geminiText ?? m.text,
       })),
       { role: 'user', text },
     ]
@@ -303,6 +329,9 @@ export default function Chat() {
         id: nextId(),
         role: 'assistant',
         text: 'Here are the nutrition facts I found:',
+        // geminiText carries the actual macro numbers so Gemini retains this
+        // context in subsequent turns (the display text is intentionally brief).
+        geminiText: macroSummary('scanned label', extracted),
         ocrTotals: extracted,
         rules,
       }
