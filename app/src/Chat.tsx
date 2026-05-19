@@ -6,7 +6,7 @@ import { useWorkingMeal } from '@/hooks/useWorkingMeal'
 import { useUserRules } from '@/hooks/useUserRules'
 import { sendMessage, ocrImage } from '@/lib/gemini'
 import { supabase } from '@/lib/supabase'
-import type { Message } from '@/components/ChatMessage'
+import type { Message, BatchDerivation } from '@/components/ChatMessage'
 import type { ChatMessage as GeminiMessage } from '@/lib/gemini'
 
 let idCounter = 0
@@ -111,24 +111,34 @@ export default function Chat() {
             if (batch.total_weight_g && batch.total_macros) {
               const scale = portionGrams / batch.total_weight_g
               const scale_macro = (v: number | null) => (v != null ? v * scale : 0)
+              const scaledTotals = {
+                calories:  scale_macro(batch.total_macros.calories),
+                protein_g: scale_macro(batch.total_macros.protein_g),
+                fat_g:     scale_macro(batch.total_macros.fat_g),
+                carbs_g:   scale_macro(batch.total_macros.carbs_g),
+                fiber_g:   scale_macro(batch.total_macros.fiber_g),
+                sugar_g:   scale_macro(batch.total_macros.sugar_g),
+              }
               update({
                 components: [],
-                totals: {
-                  calories:  scale_macro(batch.total_macros.calories),
-                  protein_g: scale_macro(batch.total_macros.protein_g),
-                  fat_g:     scale_macro(batch.total_macros.fat_g),
-                  carbs_g:   scale_macro(batch.total_macros.carbs_g),
-                  fiber_g:   scale_macro(batch.total_macros.fiber_g),
-                  sugar_g:   scale_macro(batch.total_macros.sugar_g),
-                },
+                totals: scaledTotals,
                 message: '',
               })
               const recipeName = batch.recipes?.name
               const label = recipeName ? `${recipeName} → ${batch.name}` : batch.name
+              const derivation: BatchDerivation = {
+                portionG: portionGrams,
+                totalWeightG: batch.total_weight_g,
+                batchName: batch.name,
+                recipeName: recipeName ?? undefined,
+              }
               const assistantMsg: Message = {
                 id: nextId(),
                 role: 'assistant',
                 text: `I've loaded ${portionGrams}g of ${label} into your working meal.`,
+                ocrTotals: scaledTotals,
+                rules,
+                batchDerivation: derivation,
               }
               setMessages((prev) => [...prev, assistantMsg])
             }

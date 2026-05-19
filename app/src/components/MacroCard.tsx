@@ -7,12 +7,21 @@ import { evaluateRule } from '@/hooks/useUserRules'
 
 // ── Types & helpers ───────────────────────────────────────────────────────────
 
+export interface BatchDerivation {
+  portionG: number
+  totalWeightG: number
+  batchName: string
+  recipeName?: string
+}
+
 interface Props {
   totals: WorkingMealTotals | OcrTotals
   origin?: 'ai_estimated' | 'verified_label'
   onSaved?: () => void
   /** Per-meal rules to evaluate. If omitted, falls back to hardcoded protein/fiber checks. */
   rules?: UserRule[]
+  /** Batch portion scaling info to show at top of card */
+  derivation?: BatchDerivation
 }
 
 function fmt(val: number | null | undefined): string {
@@ -42,7 +51,7 @@ type SaveState = 'idle' | 'naming' | 'checking' | 'conflict' | 'saving' | 'saved
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function MacroCard({ totals, origin, onSaved, rules }: Props) {
+export default function MacroCard({ totals, origin, onSaved, rules, derivation }: Props) {
   const { user } = useAuth()
   const [saveState, setSaveState] = useState<SaveState>('idle')
   const [name, setName] = useState('')
@@ -170,6 +179,17 @@ export default function MacroCard({ totals, origin, onSaved, rules }: Props) {
 
   return (
     <div className="bg-white border border-gray-200 rounded-xl p-3 text-sm w-full max-w-[80%]">
+      {derivation && (
+        <div className="bg-gray-50 border border-gray-100 rounded-lg px-3 py-1.5 mb-2">
+          <p className="text-xs text-gray-500">
+            {derivation.portionG}g of {derivation.totalWeightG}g
+            {derivation.recipeName
+              ? ` · ${derivation.recipeName} → ${derivation.batchName}`
+              : ` · ${derivation.batchName}`}
+            {' · '}{Math.round((derivation.portionG / derivation.totalWeightG) * 100)}%
+          </p>
+        </div>
+      )}
       <p className="font-semibold text-gray-700 mb-2">Meal totals</p>
       <div className="divide-y divide-gray-100">
         {rows.map((row) => (
