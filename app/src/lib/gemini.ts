@@ -1,3 +1,5 @@
+import type { AiTagKey } from '@/lib/tags'
+
 export interface WorkingMealComponent {
   name: string
   weight_g: number | null
@@ -137,4 +139,57 @@ export async function ocrImage(base64: string, mimeType: string): Promise<OcrTot
   const raw: string = data.candidates[0].content.parts[0].text
   const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim()
   return JSON.parse(cleaned) as OcrTotals
+}
+
+// ── AI Tag Inference ─────────────────────────────────────────────────────────
+
+const AI_TAG_KEYS: AiTagKey[] = ['sweet_tooth', 'savory', 'filling']
+
+/**
+ * Ask Gemini to classify which (if any) of the 3 AI tags apply to this food item.
+ * Returns an array of applicable AiTagKey values (may be empty).
+ * Fails silently — AI tags are best-effort, never block save.
+ */
+export async function inferAiTags(
+  name: string,
+  macros: {
+    calories: number | null
+    protein_g: number | null
+    fat_g: number | null
+    carbs_g: number | null
+    fiber_g: number | null
+    sugar_g: number | null
+  }
+): Promise<AiTagKey[]> {
+  const key = import.meta.env.VITE_GEMINI_API_KEY
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`
+
+  const prompt = `You are a nutrition classifier. Given a food item's name and macros, determine which of these tags apply. Respond with valid JSON only — an array of applicable tag keys from this list: ["sweet_tooth", "savory", "filling"]. Return an empty array if none apply.
+
+Tag definitions:
+- sweet_tooth: dessert-like, sugary foods (candy, cake, cookies, ice cream, sugary drinks)
+- savory: salty, savory flavor profile (meats, cheeses, salty snacks, soups)
+- filling: high satiety — typically high protein AND high fiber together
+
+Food: "${name}"
+Macros: calories=${macros.calories ?? '?'}, protein=${macros.protein_g ?? '?'}g, fat=${macros.fat_g ?? '?'}g, carbs=${macros.carbs_g ?? '?'}g, fiber=${macros.fiber_g ?? '?'}g, sugar=${macros.sugar_g ?? '?'}g
+
+Respond with ONLY a JSON array, e.g.: ["savory"] or ["sweet_tooth"] or [] or ["savory","filling"]`
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      }),
+    })
+    const json = await res.json() as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> }
+    const raw = json.candidates?.[0]?.content?.parts?.[0]?.text ?? '[]'
+    const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim()
+    const parsed = JSON.parse(cleaned) as unknown[]
+    return (parsed as string[]).filter((t): t is AiTagKey => AI_TAG_KEYS.includes(t as AiTagKey))
+  } catch {
+    return [] // fail silently — AI tags are best-effort
+  }
 }
