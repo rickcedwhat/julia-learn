@@ -3,10 +3,11 @@ import { useRef, useState } from 'react'
 interface Props {
   onSend: (text: string) => void
   onPhoto: (file: File) => void
+  onLibraryOpen: () => void
   disabled?: boolean
 }
 
-export default function ChatInput({ onSend, onPhoto, disabled }: Props) {
+export default function ChatInput({ onSend, onPhoto, onLibraryOpen, disabled }: Props) {
   const [value, setValue] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -65,6 +66,20 @@ export default function ChatInput({ onSend, onPhoto, disabled }: Props) {
         placeholder="What did you eat?"
         className="flex-1 resize-none rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:opacity-50 max-h-36 overflow-y-auto"
       />
+
+      {/* Library button */}
+      <button
+        type="button"
+        onClick={onLibraryOpen}
+        disabled={disabled}
+        aria-label="Search library"
+        className="p-2 text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-40 shrink-0"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+        </svg>
+      </button>
 
       {/* Camera button */}
       <button

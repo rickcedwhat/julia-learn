@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import ChatMessage from '@/components/ChatMessage'
 import ChatInput from '@/components/ChatInput'
+import LabelSearchPanel from '@/components/LabelSearchPanel'
 import { useWorkingMeal } from '@/hooks/useWorkingMeal'
 import { useUserRules } from '@/hooks/useUserRules'
 import { sendMessage, ocrImage } from '@/lib/gemini'
@@ -30,6 +31,7 @@ function readFileAsBase64(file: File): Promise<{ base64: string; dataUrl: string
 export default function Chat() {
   const [messages, setMessages] = useState<Message[]>([])
   const [loading, setLoading] = useState(false)
+  const [libraryOpen, setLibraryOpen] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const { update } = useWorkingMeal()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -168,6 +170,46 @@ export default function Chat() {
     setMessages((prev) => [...prev, confirmMsg])
   }
 
+  async function handleLibrarySelect(labelId: string, labelName: string) {
+    const { data, error } = await supabase
+      .from('labels')
+      .select('*')
+      .eq('id', labelId)
+      .single()
+
+    if (!error && data) {
+      const label = data as {
+        name: string
+        calories: number | null
+        protein_g: number | null
+        fat_g: number | null
+        carbs_g: number | null
+        fiber_g: number | null
+        sugar_g: number | null
+      }
+      update({
+        components: [],
+        totals: {
+          calories:  label.calories  ?? 0,
+          protein_g: label.protein_g ?? 0,
+          fat_g:     label.fat_g     ?? 0,
+          carbs_g:   label.carbs_g   ?? 0,
+          fiber_g:   label.fiber_g   ?? 0,
+          sugar_g:   label.sugar_g   ?? 0,
+        },
+        message: '',
+      })
+      const assistantMsg: Message = {
+        id: nextId(),
+        role: 'assistant',
+        text: `I've loaded "${labelName}" into your working meal. You can tell me how much you had, or add more items.`,
+        rules,
+      }
+      setMessages((prev) => [...prev, assistantMsg])
+    }
+    setLibraryOpen(false)
+  }
+
   async function handleSend(text: string) {
     const userMsg: Message = { id: nextId(), role: 'user', text }
     setMessages((prev) => [...prev, userMsg])
@@ -289,7 +331,17 @@ export default function Chat() {
         <div ref={bottomRef} />
       </div>
 
-      <ChatInput onSend={handleSend} onPhoto={handlePhoto} disabled={loading} />
+      <LabelSearchPanel
+        open={libraryOpen}
+        onClose={() => setLibraryOpen(false)}
+        onSelect={handleLibrarySelect}
+      />
+      <ChatInput
+        onSend={handleSend}
+        onPhoto={handlePhoto}
+        onLibraryOpen={() => setLibraryOpen(true)}
+        disabled={loading}
+      />
     </div>
   )
 }
