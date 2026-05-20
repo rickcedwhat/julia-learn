@@ -180,6 +180,7 @@ export default function MacroCard({ totals, origin, onSaved, onLogMeal, rules, d
     })
     const tags = mergeTags(mathTags, aiTags)
     const storedImageUrl = user?.id ? await uploadImage(user.id) : null
+    const ocrTotals = totals as OcrTotals
     const { data: insertData, error } = await supabase
       .from('labels')
       .insert({
@@ -196,6 +197,7 @@ export default function MacroCard({ totals, origin, onSaved, onLogMeal, rules, d
         protected: false,
         version,
         image_url: storedImageUrl,
+        serving_size: ocrTotals.serving_size ?? null,
       })
       .select('id')
       .single()

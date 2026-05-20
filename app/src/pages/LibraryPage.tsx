@@ -24,6 +24,7 @@ export interface Label {
   version: number
   created_at: string
   image_url: string | null
+  serving_size: string | null
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
