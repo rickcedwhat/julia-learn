@@ -67,6 +67,7 @@ export default function RecipesPage() {
     return () => {
       cancelled = true
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id])
 
   async function handleCreate(e: React.FormEvent) {

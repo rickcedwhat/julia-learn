@@ -23,6 +23,7 @@ export interface Label {
   protected: boolean
   version: number
   created_at: string
+  image_url: string | null
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────

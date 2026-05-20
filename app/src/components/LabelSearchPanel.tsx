@@ -40,6 +40,7 @@ export default function LabelSearchPanel({ open, onClose, onSelect }: Props) {
       if (!cancelled) setLabels((data as Label[]) ?? [])
     })()
     return () => { cancelled = true }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, user?.id])
 
   // Reset query when panel closes

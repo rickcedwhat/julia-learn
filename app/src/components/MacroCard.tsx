@@ -31,6 +31,8 @@ interface Props {
   rules?: UserRule[]
   /** Batch portion scaling info to show at top of card */
   derivation?: BatchDerivation
+  /** Data URL of the original scanned image — uploaded to storage when saving */
+  imageUrl?: string
 }
 
 function fmt(val: number | null | undefined): string {
@@ -60,7 +62,7 @@ type SaveState = 'idle' | 'naming' | 'checking' | 'conflict' | 'saving' | 'saved
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function MacroCard({ totals, origin, onSaved, onLogMeal, rules, derivation }: Props) {
+export default function MacroCard({ totals, origin, onSaved, onLogMeal, rules, derivation, imageUrl }: Props) {
   const { user } = useAuth()
   const [saveState, setSaveState] = useState<SaveState>('idle')
   const [name, setName] = useState('')
@@ -145,6 +147,25 @@ export default function MacroCard({ totals, origin, onSaved, onLogMeal, rules, d
     }
   }
 
+  /** Upload imageUrl (data URL) to storage; returns the public URL or null on failure. */
+  async function uploadImage(userId: string): Promise<string | null> {
+    if (!imageUrl) return null
+    try {
+      const res = await fetch(imageUrl)
+      const blob = await res.blob()
+      const ext = blob.type.split('/')[1] ?? 'jpg'
+      const path = `${userId}/${crypto.randomUUID()}.${ext}`
+      const { error: uploadError } = await supabase.storage
+        .from('label-images')
+        .upload(path, blob, { contentType: blob.type })
+      if (uploadError) return null
+      const { data } = supabase.storage.from('label-images').getPublicUrl(path)
+      return data.publicUrl
+    } catch {
+      return null
+    }
+  }
+
   /** Insert the label with the given version. */
   async function doInsert(trimmed: string, version: number) {
     setSaveState('saving')
@@ -158,6 +179,7 @@ export default function MacroCard({ totals, origin, onSaved, onLogMeal, rules, d
       sugar_g: totals.sugar_g ?? null,
     })
     const tags = mergeTags(mathTags, aiTags)
+    const storedImageUrl = user?.id ? await uploadImage(user.id) : null
     const { data: insertData, error } = await supabase
       .from('labels')
       .insert({
@@ -173,6 +195,7 @@ export default function MacroCard({ totals, origin, onSaved, onLogMeal, rules, d
         tags,
         protected: false,
         version,
+        image_url: storedImageUrl,
       })
       .select('id')
       .single()

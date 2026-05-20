@@ -27,6 +27,8 @@ export interface Message {
   imageDataUrl?: string
   /** OCR result to show as a MacroCard (nullable fields) */
   ocrTotals?: OcrTotals
+  /** Data URL of the original scanned image — passed to MacroCard for upload on save */
+  ocrImageUrl?: string
   /** Per-meal rules to evaluate in MacroCard badges */
   rules?: UserRule[]
   /** Batch portion scaling derivation to show in meal card */
@@ -99,6 +101,7 @@ export default function ChatMessage({ message, onLogged, onLabelSaved, onLogMeal
           derivation={message.batchDerivation}
           onSaved={onLabelSaved}
           onLogMeal={onLogMeal ? () => onLogMeal(message.ocrTotals!) : undefined}
+          imageUrl={message.ocrImageUrl}
         />
       )}
     </div>
