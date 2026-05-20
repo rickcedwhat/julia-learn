@@ -40,8 +40,10 @@ function fmt(val: number | null | undefined): string {
 }
 
 /** Map Macro enum → totals field name */
-function macroToField(macro: UserRule['macro']): keyof (WorkingMealTotals & OcrTotals) {
-  const map: Record<UserRule['macro'], keyof (WorkingMealTotals & OcrTotals)> = {
+type MacroField = 'calories' | 'protein_g' | 'fat_g' | 'carbs_g' | 'fiber_g' | 'sugar_g'
+
+function macroToField(macro: UserRule['macro']): MacroField {
+  const map: Record<UserRule['macro'], MacroField> = {
     calories: 'calories',
     protein:  'protein_g',
     fat:      'fat_g',
