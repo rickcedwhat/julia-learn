@@ -41,11 +41,13 @@ function macroSummary(
     carbs_g?: number | null
     fiber_g?: number | null
     sugar_g?: number | null
+    serving_size?: string | null
   },
 ): string {
   const r = (v: number | null | undefined) => (v != null ? Math.round(v) : '?')
+  const serving = t.serving_size ? ` 1 serving = ${t.serving_size}.` : ''
   return (
-    `Nutrition info for "${name}": ` +
+    `Nutrition info for "${name}":${serving} ` +
     `${r(t.calories)} kcal, ${r(t.protein_g)}g protein, ${r(t.fat_g)}g fat, ` +
     `${r(t.carbs_g)}g carbs, ${r(t.fiber_g)}g fiber, ${r(t.sugar_g)}g sugar. ` +
     `Use these exact values when the user describes how much of this they ate.`
@@ -193,6 +195,7 @@ export default function Chat() {
             carbs_g: number | null
             fiber_g: number | null
             sugar_g: number | null
+            serving_size: string | null
           }
           update({
             components: [],
@@ -211,12 +214,13 @@ export default function Chat() {
             id: labelId,
             name: label.name,
             macros: {
-              calories:  label.calories,
-              protein_g: label.protein_g,
-              fat_g:     label.fat_g,
-              carbs_g:   label.carbs_g,
-              fiber_g:   label.fiber_g,
-              sugar_g:   label.sugar_g,
+              calories:     label.calories,
+              protein_g:    label.protein_g,
+              fat_g:        label.fat_g,
+              carbs_g:      label.carbs_g,
+              fiber_g:      label.fiber_g,
+              sugar_g:      label.sugar_g,
+              serving_size: label.serving_size,
             },
             origin: 'library',
           })
@@ -346,6 +350,7 @@ export default function Chat() {
         carbs_g: number | null
         fiber_g: number | null
         sugar_g: number | null
+        serving_size: string | null
       }
       update({
         components: [],
@@ -364,12 +369,13 @@ export default function Chat() {
         id: labelId,
         name: labelName,
         macros: {
-          calories:  label.calories,
-          protein_g: label.protein_g,
-          fat_g:     label.fat_g,
-          carbs_g:   label.carbs_g,
-          fiber_g:   label.fiber_g,
-          sugar_g:   label.sugar_g,
+          calories:     label.calories,
+          protein_g:    label.protein_g,
+          fat_g:        label.fat_g,
+          carbs_g:      label.carbs_g,
+          fiber_g:      label.fiber_g,
+          sugar_g:      label.sugar_g,
+          serving_size: label.serving_size,
         },
         origin: 'library',
       })

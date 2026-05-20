@@ -154,6 +154,9 @@ export default function LabelDetailPage() {
             )}
             <span className="text-xs text-gray-400">{formatDate(label.created_at)}</span>
           </div>
+          {label.serving_size && (
+            <p className="text-sm text-gray-500">Serving: {label.serving_size}</p>
+          )}
         </div>
 
         {/* Source image thumbnail (only present for OCR-scanned labels) */}

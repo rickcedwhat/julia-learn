@@ -91,10 +91,12 @@ export interface OcrTotals {
   carbs_g: number | null
   fiber_g: number | null
   sugar_g: number | null
+  serving_size?: string | null
 }
 
 const OCR_PROMPT = `You are a nutrition label parser.
-Extract exactly these 6 fields from the nutrition label in this image:
+Extract exactly these fields from the nutrition label in this image:
+- Serving size (e.g. "4 pieces (140g)", "1 cup (240ml)", "2 tbsp (30g)")
 - Calories
 - Protein (g)
 - Fat (g)
@@ -104,6 +106,7 @@ Extract exactly these 6 fields from the nutrition label in this image:
 
 Return ONLY valid JSON (no markdown, no code fences) in exactly this shape:
 {
+  "serving_size": <string or null>,
   "calories": <number or null>,
   "protein_g": <number or null>,
   "fat_g": <number or null>,

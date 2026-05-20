@@ -40,8 +40,10 @@ function fmt(val: number | null | undefined): string {
 }
 
 /** Map Macro enum → totals field name */
-function macroToField(macro: UserRule['macro']): keyof (WorkingMealTotals & OcrTotals) {
-  const map: Record<UserRule['macro'], keyof (WorkingMealTotals & OcrTotals)> = {
+type MacroField = 'calories' | 'protein_g' | 'fat_g' | 'carbs_g' | 'fiber_g' | 'sugar_g'
+
+function macroToField(macro: UserRule['macro']): MacroField {
+  const map: Record<UserRule['macro'], MacroField> = {
     calories: 'calories',
     protein:  'protein_g',
     fat:      'fat_g',
@@ -180,6 +182,7 @@ export default function MacroCard({ totals, origin, onSaved, onLogMeal, rules, d
     })
     const tags = mergeTags(mathTags, aiTags)
     const storedImageUrl = user?.id ? await uploadImage(user.id) : null
+    const ocrTotals = totals as OcrTotals
     const { data: insertData, error } = await supabase
       .from('labels')
       .insert({
@@ -196,6 +199,7 @@ export default function MacroCard({ totals, origin, onSaved, onLogMeal, rules, d
         protected: false,
         version,
         image_url: storedImageUrl,
+        serving_size: ocrTotals.serving_size ?? null,
       })
       .select('id')
       .single()
