@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase'
 import MacroCard from '@/components/MacroCard'
 import TagChips from '@/components/TagChips'
 import type { OcrTotals } from '@/lib/gemini'
+import { inferMetaTags } from '@/lib/gemini'
 import type { Label } from '@/pages/LibraryPage'
 import type { TagKey } from '@/lib/tags'
 
@@ -38,6 +39,12 @@ export default function LabelDetailPage() {
 
   // #30 – delete flow
   const [deleteState, setDeleteState] = useState<'idle' | 'confirm' | 'protected-warn' | 'deleting'>('idle')
+
+  // Fix modal state
+  const [fixOpen, setFixOpen] = useState(false)
+  const [fixServingSize, setFixServingSize] = useState('')
+  const [fixingMeta, setFixingMeta] = useState(false)
+  const [fixSaving, setFixSaving] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -95,6 +102,41 @@ export default function LabelDetailPage() {
     }
   }
 
+  function openFix() {
+    if (!label) return
+    setFixServingSize(label.serving_size ?? '')
+    setFixOpen(true)
+  }
+
+  async function handleRegenerateMetaTags() {
+    if (!label) return
+    setFixingMeta(true)
+    const metaTags = await inferMetaTags(label.name)
+    const { error: dbError } = await supabase
+      .from('labels')
+      .update({ meta_tags: metaTags })
+      .eq('id', label.id)
+    setFixingMeta(false)
+    if (!dbError) {
+      setLabel((prev) => prev ? { ...prev, meta_tags: metaTags } : prev)
+    }
+  }
+
+  async function handleSaveFix() {
+    if (!label) return
+    setFixSaving(true)
+    const trimmed = fixServingSize.trim() || null
+    const { error: dbError } = await supabase
+      .from('labels')
+      .update({ serving_size: trimmed })
+      .eq('id', label.id)
+    setFixSaving(false)
+    if (!dbError) {
+      setLabel((prev) => prev ? { ...prev, serving_size: trimmed } : prev)
+      setFixOpen(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center">
@@ -129,6 +171,8 @@ export default function LabelDetailPage() {
     sugar_g:   label.sugar_g,
   }
 
+  const isIncomplete = !label.serving_size || label.meta_tags.length === 0
+
   return (
     <div className="flex-1 overflow-y-auto">
       <div className="px-4 py-4 max-w-2xl mx-auto space-y-4">
@@ -142,7 +186,18 @@ export default function LabelDetailPage() {
 
         {/* Header */}
         <div className="space-y-1">
-          <h1 className="text-2xl font-semibold text-gray-900">{label.name}</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-semibold text-gray-900">{label.name}</h1>
+            {isIncomplete && (
+              <button
+                type="button"
+                onClick={openFix}
+                className="text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full hover:bg-amber-100 transition-colors shrink-0"
+              >
+                Incomplete
+              </button>
+            )}
+          </div>
           <div className="flex items-center gap-2">
             <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${badge.className}`}>
               {badge.label}
@@ -253,6 +308,71 @@ export default function LabelDetailPage() {
           )}
         </div>
       </div>
+
+      {/* Fix / complete data modal */}
+      {fixOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/40"
+          onClick={() => setFixOpen(false)}
+        >
+          <div
+            className="bg-white rounded-t-2xl w-full max-w-lg p-5 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="font-semibold text-gray-900 text-base">Complete label data</h2>
+
+            {/* Serving size */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-gray-700">
+                Serving size
+              </label>
+              <input
+                type="text"
+                value={fixServingSize}
+                onChange={(e) => setFixServingSize(e.target.value)}
+                placeholder='e.g. "4 pieces (140g)" or "1 cup (240ml)"'
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            {/* Meta-tags */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-gray-700">Search tags</span>
+                {label.meta_tags.length > 0 && (
+                  <span className="text-xs text-gray-400">{label.meta_tags.join(', ')}</span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => void handleRegenerateMetaTags()}
+                disabled={fixingMeta}
+                className="w-full border border-gray-200 text-gray-700 hover:bg-gray-50 font-medium rounded-lg px-4 py-2 text-sm transition-colors disabled:opacity-60"
+              >
+                {fixingMeta ? 'Generating…' : label.meta_tags.length === 0 ? 'Generate search tags' : 'Regenerate search tags'}
+              </button>
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setFixOpen(false)}
+                className="flex-1 border border-gray-300 text-gray-700 font-medium rounded-lg px-4 py-2.5 text-sm hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleSaveFix()}
+                disabled={fixSaving}
+                className="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg px-4 py-2.5 text-sm transition-colors disabled:opacity-60"
+              >
+                {fixSaving ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

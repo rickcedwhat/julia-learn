@@ -102,6 +102,7 @@ export default function ChatMessage({ message, onLogged, onLabelSaved, onLogMeal
           onSaved={onLabelSaved}
           onLogMeal={onLogMeal ? () => onLogMeal(message.ocrTotals!) : undefined}
           imageUrl={message.ocrImageUrl}
+          suggestedName={message.ocrTotals.suggested_name ?? undefined}
         />
       )}
     </div>
