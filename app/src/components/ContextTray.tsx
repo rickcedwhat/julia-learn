@@ -37,7 +37,7 @@ export default function ContextTray({ labels, onRemove, onOpenLibrary }: Props) 
   return (
     <>
       {/* Tray bar — always shown so "+ Add" is reachable */}
-      <div className="border-t border-gray-100 bg-gray-50 px-3 py-2">
+      <div className="border-t border-gray-100 bg-gray-50 px-3 py-2 overflow-hidden">
         <div className="flex items-center gap-1.5 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
           <span className="text-[11px] font-medium text-gray-400 shrink-0 uppercase tracking-wide">
             Context

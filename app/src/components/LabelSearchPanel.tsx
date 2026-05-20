@@ -82,7 +82,6 @@ export default function LabelSearchPanel({ open, onClose, onSelect }: Props) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search labels…"
-          autoFocus
           className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       </div>
