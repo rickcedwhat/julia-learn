@@ -147,6 +147,20 @@ export default function Chat() {
     void persistMessages(withFlag)
   }
 
+  function handleFlag() {
+    const now = new Date()
+    const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+    const flagMsg: Message = {
+      id: nextId(),
+      role: 'assistant',
+      text: `Issue reported at ${timeStr}`,
+      flagged: true,
+    }
+    const withFlag = [...messages, flagMsg]
+    setMessages(withFlag)
+    void persistMessages(withFlag)
+  }
+
   // ── Context helpers ────────────────────────────────────────────────────────
 
   function addToContext(label: ContextLabel) {
