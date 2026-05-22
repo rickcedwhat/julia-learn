@@ -7,7 +7,7 @@ import LabelSearchPanel from '@/components/LabelSearchPanel'
 import { useWorkingMeal } from '@/hooks/useWorkingMeal'
 import { useUserRules } from '@/hooks/useUserRules'
 import { useAuth } from '@/hooks/useAuth'
-import { sendMessage, ocrImage } from '@/lib/gemini'
+import { sendMessage, ocrImage, inferSuggestions } from '@/lib/gemini'
 import { supabase } from '@/lib/supabase'
 import type { Message, BatchDerivation } from '@/components/ChatMessage'
 import type { ContextLabel } from '@/components/ContextTray'
@@ -76,6 +76,7 @@ export default function Chat() {
   const [loading, setLoading] = useState(false)
   const [libraryOpen, setLibraryOpen] = useState(false)
   const [contextLabels, setContextLabels] = useState<ContextLabel[]>([])
+  const [suggestions, setSuggestions] = useState<ContextLabel[]>([])
   const bottomRef = useRef<HTMLDivElement>(null)
   const sessionIdRef = useRef<string | null>(null)
   const { workingMeal, update } = useWorkingMeal()
@@ -129,6 +130,21 @@ export default function Chat() {
     // The next message will create a fresh session lazily.
     sessionIdRef.current = null
     setMessages([])
+    setSuggestions([])
+  }
+
+  function handleFlag() {
+    const now = new Date()
+    const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+    const flagMsg: Message = {
+      id: nextId(),
+      role: 'assistant',
+      text: `Issue reported at ${timeStr}`,
+      flagged: true,
+    }
+    const withFlag = [...messages, flagMsg]
+    setMessages(withFlag)
+    void persistMessages(withFlag)
   }
 
   // ── Context helpers ────────────────────────────────────────────────────────
@@ -168,6 +184,21 @@ export default function Chat() {
       saveWidget: {
         suggestedName: '',
         totals: totals as WorkingMealTotals,
+      },
+      rules,
+    }
+    setMessages((prev) => [...prev, widgetMsg])
+  }
+
+  /** Persistent "Log meal" button — uses current working meal state directly. */
+  function handleLogMealButton() {
+    const widgetMsg: Message = {
+      id: nextId(),
+      role: 'assistant',
+      text: '',
+      saveWidget: {
+        suggestedName: workingMeal.suggested_name ?? '',
+        totals: workingMeal.totals,
       },
       rules,
     }
@@ -433,6 +464,64 @@ export default function Chat() {
       const withAssistant = [...withUser, assistantMsg]
       setMessages(withAssistant)
       void persistMessages(withAssistant)
+
+      // Background: suggest library labels that pair well with the current meal.
+      // Only when the meal is in-progress (not ready to log) and has components.
+      if (!meal.ready_to_log && meal.components.length > 0 && user) {
+        setSuggestions([]) // clear stale chips immediately
+        void (async () => {
+          try {
+            const { data: labelRows } = await supabase
+              .from('labels')
+              .select('id, name, calories, protein_g, fat_g, carbs_g, fiber_g, sugar_g, serving_size')
+              .eq('user_id', user.id)
+              .order('name')
+
+            if (!labelRows || labelRows.length === 0) return
+
+            // Exclude labels already loaded in the context tray
+            const contextIds = new Set(contextLabels.map((l) => l.id ?? l.key))
+            type LabelRow = {
+              id: string; name: string
+              calories: number | null; protein_g: number | null; fat_g: number | null
+              carbs_g: number | null; fiber_g: number | null; sugar_g: number | null
+              serving_size: string | null
+            }
+            const candidates = (labelRows as LabelRow[]).filter((l) => !contextIds.has(l.id))
+            if (candidates.length === 0) return
+
+            const suggested = await inferSuggestions(
+              meal.components.map((c) => c.name),
+              candidates.map((c) => c.name),
+            )
+
+            const matched = suggested
+              .map((name) => candidates.find((c) => c.name === name))
+              .filter((c): c is LabelRow => c !== undefined)
+              .map((c): ContextLabel => ({
+                key: c.id,
+                id: c.id,
+                name: c.name,
+                macros: {
+                  calories: c.calories,
+                  protein_g: c.protein_g,
+                  fat_g: c.fat_g,
+                  carbs_g: c.carbs_g,
+                  fiber_g: c.fiber_g,
+                  sugar_g: c.sugar_g,
+                  serving_size: c.serving_size,
+                },
+                origin: 'library',
+              }))
+
+            setSuggestions(matched)
+          } catch {
+            // fail silently — suggestions are best-effort
+          }
+        })()
+      } else {
+        setSuggestions([])
+      }
     } catch {
       const errorMsg: Message = {
         id: nextId(),
@@ -543,7 +632,15 @@ export default function Chat() {
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
       {messages.length > 0 && (
-        <div className="flex justify-end px-4 pt-2">
+        <div className="flex items-center justify-end gap-3 px-4 pt-2">
+          <button
+            type="button"
+            onClick={handleFlag}
+            title="Report an issue"
+            className="text-xs text-amber-400 hover:text-amber-600 transition-colors"
+          >
+            ⚑ Report issue
+          </button>
           <button
             type="button"
             onClick={handleNewChat}
@@ -577,6 +674,38 @@ export default function Chat() {
         )}
         <div ref={bottomRef} />
       </div>
+
+      {workingMeal.components.length > 0 && !messages.some((m) => m.saveWidget && !m.logged) && (
+        <div className="px-4 py-2 border-t border-gray-100">
+          <button
+            type="button"
+            onClick={handleLogMealButton}
+            disabled={loading}
+            className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white font-medium rounded-xl px-4 py-2.5 text-sm transition-colors"
+          >
+            Log meal
+          </button>
+        </div>
+      )}
+
+      {suggestions.length > 0 && (
+        <div className="px-4 py-2 flex items-center gap-2 flex-wrap border-t border-gray-100">
+          <span className="text-xs text-gray-400 shrink-0">Add to meal?</span>
+          {suggestions.map((label) => (
+            <button
+              key={label.key}
+              type="button"
+              onClick={() => {
+                addToContext(label)
+                setSuggestions((prev) => prev.filter((s) => s.key !== label.key))
+              }}
+              className="flex items-center gap-1 px-3 py-1 bg-blue-50 text-blue-700 text-xs font-medium rounded-full border border-blue-200 hover:bg-blue-100 transition-colors"
+            >
+              + {label.name}
+            </button>
+          ))}
+        </div>
+      )}
 
       <LabelSearchPanel
         open={libraryOpen}
