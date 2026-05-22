@@ -711,6 +711,8 @@ export default function Chat() {
         open={libraryOpen}
         onClose={() => setLibraryOpen(false)}
         onSelect={handleLibrarySelect}
+        mealComponentNames={workingMeal.components.map((c) => c.name)}
+        contextLabelIds={contextLabels.map((l) => l.id).filter((id): id is string => Boolean(id))}
       />
       <ContextTray
         labels={contextLabels}
