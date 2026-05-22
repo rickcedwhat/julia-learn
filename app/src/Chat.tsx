@@ -190,6 +190,21 @@ export default function Chat() {
     setMessages((prev) => [...prev, widgetMsg])
   }
 
+  /** Persistent "Log meal" button — uses current working meal state directly. */
+  function handleLogMealButton() {
+    const widgetMsg: Message = {
+      id: nextId(),
+      role: 'assistant',
+      text: '',
+      saveWidget: {
+        suggestedName: workingMeal.suggested_name ?? '',
+        totals: workingMeal.totals,
+      },
+      rules,
+    }
+    setMessages((prev) => [...prev, widgetMsg])
+  }
+
   // ── Deep-links ─────────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -659,6 +674,19 @@ export default function Chat() {
         )}
         <div ref={bottomRef} />
       </div>
+
+      {workingMeal.components.length > 0 && !messages.some((m) => m.saveWidget && !m.logged) && (
+        <div className="px-4 py-2 border-t border-gray-100">
+          <button
+            type="button"
+            onClick={handleLogMealButton}
+            disabled={loading}
+            className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white font-medium rounded-xl px-4 py-2.5 text-sm transition-colors"
+          >
+            Log meal
+          </button>
+        </div>
+      )}
 
       {suggestions.length > 0 && (
         <div className="px-4 py-2 flex items-center gap-2 flex-wrap border-t border-gray-100">
