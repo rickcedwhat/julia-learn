@@ -131,6 +131,20 @@ export default function Chat() {
     setMessages([])
   }
 
+  function handleFlag() {
+    const now = new Date()
+    const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+    const flagMsg: Message = {
+      id: nextId(),
+      role: 'assistant',
+      text: `Issue reported at ${timeStr}`,
+      flagged: true,
+    }
+    const withFlag = [...messages, flagMsg]
+    setMessages(withFlag)
+    void persistMessages(withFlag)
+  }
+
   // ── Context helpers ────────────────────────────────────────────────────────
 
   function addToContext(label: ContextLabel) {
@@ -543,7 +557,15 @@ export default function Chat() {
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
       {messages.length > 0 && (
-        <div className="flex justify-end px-4 pt-2">
+        <div className="flex items-center justify-end gap-3 px-4 pt-2">
+          <button
+            type="button"
+            onClick={handleFlag}
+            title="Report an issue"
+            className="text-xs text-amber-400 hover:text-amber-600 transition-colors"
+          >
+            ⚑ Report issue
+          </button>
           <button
             type="button"
             onClick={handleNewChat}

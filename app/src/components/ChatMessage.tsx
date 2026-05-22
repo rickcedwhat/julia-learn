@@ -33,6 +33,8 @@ export interface Message {
   rules?: UserRule[]
   /** Batch portion scaling derivation to show in meal card */
   batchDerivation?: BatchDerivation
+  /** User-reported issue marker — renders as a timeline flag, not a chat bubble */
+  flagged?: boolean
 }
 
 interface Props {
@@ -46,6 +48,17 @@ interface Props {
 
 export default function ChatMessage({ message, onLogged, onLabelSaved, onLogMeal }: Props) {
   const isUser = message.role === 'user'
+
+  // Flagged messages render as a centered timeline marker, not a chat bubble
+  if (message.flagged) {
+    return (
+      <div className="flex items-center gap-2 py-1">
+        <div className="flex-1 h-px bg-amber-200" />
+        <span className="text-xs text-amber-500 font-medium shrink-0">⚑ {message.text}</span>
+        <div className="flex-1 h-px bg-amber-200" />
+      </div>
+    )
+  }
 
   return (
     <div className={`flex flex-col gap-2 ${isUser ? 'items-end' : 'items-start'}`}>
