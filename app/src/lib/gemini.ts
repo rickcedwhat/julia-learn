@@ -50,7 +50,8 @@ When the user hasn't mentioned any food yet, return an empty components array an
 When the user mentions food, add it to components and compute accurate totals. Set ready_to_log to false.
 When the user corrects something, update the relevant component and recompute totals. Set ready_to_log to false.
 Always maintain cumulative state: if the user says "also add X", keep previous components.
-When the user indicates they are done and want to log the meal (e.g. "log this", "done", "save this meal", "save it", "that's it"), set ready_to_log to true and suggested_name to a concise descriptive name for the meal (e.g. "Chicken Rice Bowl", "Breakfast Oats", "Post-Workout Shake").`
+When the user indicates they are done and want to log the meal (e.g. "log this", "done", "save this meal", "save it", "that's it"), set ready_to_log to true and suggested_name to a concise descriptive name for the meal (e.g. "Chicken Rice Bowl", "Breakfast Oats", "Post-Workout Shake").
+IMPORTANT — totals must always be numbers, never null. If a macro value is unknown for a component, use your best estimate rather than null. When summing totals across components, treat any unknown/missing value as 0. The totals fields (calories, protein_g, fat_g, carbs_g, fiber_g, sugar_g) must always be numeric.`
 
 export async function sendMessage(history: ChatMessage[]): Promise<WorkingMeal> {
   const key = import.meta.env.VITE_GEMINI_API_KEY

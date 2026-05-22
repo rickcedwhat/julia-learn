@@ -28,8 +28,8 @@ function suggestMealType(): MealType {
   return 'snack'
 }
 
-function fmt(val: number): string {
-  return val.toFixed(1)
+function fmt(val: number | null | undefined): string {
+  return val == null ? '—' : val.toFixed(1)
 }
 
 interface Props {
