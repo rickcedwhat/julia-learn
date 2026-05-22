@@ -83,7 +83,9 @@ export default function Chat() {
   const { rules } = useUserRules()
   const { user } = useAuth()
 
-  // Load most recent chat session on mount (once user is known)
+  // Load most recent chat session on mount (once user is known).
+  // If no session exists yet, leave sessionIdRef null — it gets created lazily
+  // on the first persistMessages call so we never write empty sessions.
   useEffect(() => {
     if (!user) return
     void (async () => {
@@ -97,37 +99,36 @@ export default function Chat() {
       if (data?.[0]) {
         sessionIdRef.current = data[0].id as string
         setMessages(data[0].messages as Message[])
-      } else {
-        const { data: created } = await supabase
-          .from('chat_sessions')
-          .insert({ user_id: user.id, messages: [] })
-          .select('id')
-          .single()
-        if (created) sessionIdRef.current = created.id as string
       }
+      // No else — sessionIdRef stays null until the first message is sent.
     })()
   }, [user])
 
   async function persistMessages(msgs: Message[]) {
-    const sid = sessionIdRef.current
-    if (!sid) return
+    if (!user) return
+    let sid = sessionIdRef.current
+    if (!sid) {
+      // Create the session row lazily on the first real message.
+      const { data } = await supabase
+        .from('chat_sessions')
+        .insert({ user_id: user.id, messages: [] })
+        .select('id')
+        .single()
+      if (!data) return
+      sid = data.id as string
+      sessionIdRef.current = sid
+    }
     await supabase
       .from('chat_sessions')
       .update({ messages: stripImages(msgs), updated_at: new Date().toISOString() })
       .eq('id', sid)
   }
 
-  async function handleNewChat() {
-    if (!user) return
-    const { data } = await supabase
-      .from('chat_sessions')
-      .insert({ user_id: user.id, messages: [] })
-      .select('id')
-      .single()
-    if (data) {
-      sessionIdRef.current = data.id as string
-      setMessages([])
-    }
+  function handleNewChat() {
+    // Just reset local state — don't write an empty row to the DB.
+    // The next message will create a fresh session lazily.
+    sessionIdRef.current = null
+    setMessages([])
   }
 
   // ── Context helpers ────────────────────────────────────────────────────────
@@ -466,6 +467,26 @@ export default function Chat() {
 
       const extracted = await ocrImage(base64, file.type)
 
+      // If Gemini couldn't read a single macro, the scan failed — don't
+      // pollute context with "? kcal, ?g protein…" noise.
+      const allNull =
+        extracted.calories == null &&
+        extracted.protein_g == null &&
+        extracted.fat_g == null &&
+        extracted.carbs_g == null
+
+      if (allNull) {
+        const errorMsg: Message = {
+          id: nextId(),
+          role: 'assistant',
+          text: "I couldn't read any nutrition values from that image. Try a clearer, straight-on photo of the label.",
+        }
+        const withError = [...withUser, errorMsg]
+        setMessages(withError)
+        void persistMessages(withError)
+        return
+      }
+
       update({
         components: [],
         totals: {
@@ -479,11 +500,14 @@ export default function Chat() {
         message: '',
       })
 
+      // Use the product name extracted by OCR; fall back to generic label
+      const labelName = extracted.suggested_name ?? 'scanned label'
+
       // Add to context tray — name updates to the saved name when user saves to library
       const ocrKey = `ocr-${nextId()}`
       addToContext({
         key: ocrKey,
-        name: 'Scanned label',
+        name: extracted.suggested_name ?? 'Scanned label',
         macros: extracted,
         origin: 'scanned',
       })
@@ -492,7 +516,7 @@ export default function Chat() {
         id: nextId(),
         role: 'assistant',
         text: 'Here are the nutrition facts I found:',
-        geminiText: macroSummary('scanned label', extracted),
+        geminiText: macroSummary(labelName, extracted),
         ocrTotals: extracted,
         ocrImageUrl: dataUrl,
         rules,
@@ -522,7 +546,7 @@ export default function Chat() {
         <div className="flex justify-end px-4 pt-2">
           <button
             type="button"
-            onClick={() => { void handleNewChat() }}
+            onClick={handleNewChat}
             className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
           >
             New chat
