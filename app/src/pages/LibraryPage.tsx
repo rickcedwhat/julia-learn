@@ -20,6 +20,7 @@ export interface Label {
   fiber_g: number | null
   sugar_g: number | null
   tags: string[]
+  meta_tags: string[]
   protected: boolean
   version: number
   created_at: string
@@ -79,7 +80,7 @@ export default function LibraryPage() {
   const fuse = useMemo(
     () =>
       new Fuse(labels, {
-        keys: ['name'],
+        keys: ['name', 'meta_tags'],
         threshold: 0.4,
         includeScore: true,
       }),
@@ -221,6 +222,7 @@ export default function LibraryPage() {
               label: label.origin,
               className: 'bg-gray-100 text-gray-700',
             }
+            const isIncomplete = !label.serving_size || label.meta_tags.length === 0
             return (
               <button
                 key={label.id}
@@ -236,7 +238,15 @@ export default function LibraryPage() {
 
                 {/* Name + tags */}
                 <span className="flex-1 min-w-0">
-                  <span className="block font-medium text-gray-900 truncate">{label.name}</span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="font-medium text-gray-900 truncate">{label.name}</span>
+                    {isIncomplete && (
+                      <span
+                        className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0"
+                        title="Incomplete data — tap to fix"
+                      />
+                    )}
+                  </span>
                   {label.tags.length > 0 && (
                     <TagChips tags={label.tags as TagKey[]} />
                   )}

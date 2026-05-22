@@ -5,7 +5,7 @@ import { useAuth } from '@/hooks/useAuth'
 import type { UserRule } from '@/hooks/useUserRules'
 import { evaluateRule } from '@/hooks/useUserRules'
 import { computeMathTags, mergeTags } from '@/lib/tags'
-import { inferAiTags } from '@/lib/gemini'
+import { inferAiTags, inferMetaTags } from '@/lib/gemini'
 import TagChips from '@/components/TagChips'
 
 // ── Types & helpers ───────────────────────────────────────────────────────────
@@ -33,6 +33,8 @@ interface Props {
   derivation?: BatchDerivation
   /** Data URL of the original scanned image — uploaded to storage when saving */
   imageUrl?: string
+  /** Pre-populated name for the save input (from OCR product name or AI meal suggestion). */
+  suggestedName?: string
 }
 
 function fmt(val: number | null | undefined): string {
@@ -64,10 +66,10 @@ type SaveState = 'idle' | 'naming' | 'checking' | 'conflict' | 'saving' | 'saved
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function MacroCard({ totals, origin, onSaved, onLogMeal, rules, derivation, imageUrl }: Props) {
+export default function MacroCard({ totals, origin, onSaved, onLogMeal, rules, derivation, imageUrl, suggestedName }: Props) {
   const { user } = useAuth()
   const [saveState, setSaveState] = useState<SaveState>('idle')
-  const [name, setName] = useState('')
+  const [name, setName] = useState(suggestedName ?? '')
   const [savedName, setSavedName] = useState('')
   const [errorMsg, setErrorMsg] = useState('')
   // When a name collision is found, store the existing version so we can offer choices
@@ -172,14 +174,17 @@ export default function MacroCard({ totals, origin, onSaved, onLogMeal, rules, d
   async function doInsert(trimmed: string, version: number) {
     setSaveState('saving')
     const mathTags = computeMathTags(totals)
-    const aiTags = await inferAiTags(trimmed, {
-      calories: totals.calories ?? null,
-      protein_g: totals.protein_g ?? null,
-      fat_g: totals.fat_g ?? null,
-      carbs_g: totals.carbs_g ?? null,
-      fiber_g: totals.fiber_g ?? null,
-      sugar_g: totals.sugar_g ?? null,
-    })
+    const [aiTags, metaTags] = await Promise.all([
+      inferAiTags(trimmed, {
+        calories: totals.calories ?? null,
+        protein_g: totals.protein_g ?? null,
+        fat_g: totals.fat_g ?? null,
+        carbs_g: totals.carbs_g ?? null,
+        fiber_g: totals.fiber_g ?? null,
+        sugar_g: totals.sugar_g ?? null,
+      }),
+      inferMetaTags(trimmed),
+    ])
     const tags = mergeTags(mathTags, aiTags)
     const storedImageUrl = user?.id ? await uploadImage(user.id) : null
     const ocrTotals = totals as OcrTotals
@@ -196,6 +201,7 @@ export default function MacroCard({ totals, origin, onSaved, onLogMeal, rules, d
         fiber_g: totals.fiber_g ?? null,
         sugar_g: totals.sugar_g ?? null,
         tags,
+        meta_tags: metaTags,
         protected: false,
         version,
         image_url: storedImageUrl,
