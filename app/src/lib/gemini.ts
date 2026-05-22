@@ -205,6 +205,53 @@ Respond with ONLY a JSON array, e.g.: ["savory"] or ["sweet_tooth"] or [] or ["s
   }
 }
 
+// ── Suggestion Inference ─────────────────────────────────────────────────────
+
+/**
+ * Ask Gemini which library labels (0–2) would pair well with the current meal.
+ * Only returns names that exist in `availableLabels` — never invents new ones.
+ * Fails silently.
+ */
+export async function inferSuggestions(
+  mealItems: string[],
+  availableLabels: string[],
+): Promise<string[]> {
+  if (mealItems.length === 0 || availableLabels.length === 0) return []
+
+  const key = import.meta.env.VITE_GEMINI_API_KEY
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`
+
+  const prompt = `You are a meal tracking assistant. The user is building a meal that currently contains:
+${mealItems.map((i) => `- ${i}`).join('\n')}
+
+From the user's personal food library, suggest 0–2 items that would pair well with this meal (common sides, condiments, drinks, or complementary foods). Only pick from the library list — never invent new ones. If nothing fits well, return an empty array.
+
+Available library items:
+${availableLabels.map((l) => `- ${l}`).join('\n')}
+
+Respond with ONLY a JSON array of label names from the list above. Example: ["Greek Yogurt", "Banana"] or []`
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      }),
+    })
+    const json = (await res.json()) as {
+      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>
+    }
+    const raw = json.candidates?.[0]?.content?.parts?.[0]?.text ?? '[]'
+    const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim()
+    const parsed = JSON.parse(cleaned) as unknown[]
+    const labelSet = new Set(availableLabels)
+    return (parsed as string[]).filter((t) => typeof t === 'string' && labelSet.has(t))
+  } catch {
+    return []
+  }
+}
+
 // ── Meta-tag Inference ────────────────────────────────────────────────────────
 
 /**
