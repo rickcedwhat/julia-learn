@@ -7,7 +7,8 @@ import LabelSearchPanel from '@/components/LabelSearchPanel'
 import { useWorkingMeal } from '@/hooks/useWorkingMeal'
 import { useUserRules } from '@/hooks/useUserRules'
 import { useAuth } from '@/hooks/useAuth'
-import { sendMessage, ocrImage, inferSuggestions } from '@/lib/gemini'
+import { sendMessage, sendMessageWithImages, inferSuggestions } from '@/lib/gemini'
+import type { ImageAttachment } from '@/lib/gemini'
 import { supabase } from '@/lib/supabase'
 import type { Message, BatchDerivation } from '@/components/ChatMessage'
 import type { ContextLabel } from '@/components/ContextTray'
@@ -417,8 +418,27 @@ export default function Chat() {
 
   // ── Chat send ──────────────────────────────────────────────────────────────
 
-  async function handleSend(text: string) {
-    const userMsg: Message = { id: nextId(), role: 'user', text }
+  async function handleSend(text: string, files: File[] = []) {
+    // Convert files once — reuse both base64 and dataUrl from the same read
+    const converted = await Promise.all(files.map(readFileAsBase64))
+    const imageAttachments: ImageAttachment[] = converted.map((c, i) => ({
+      base64: c.base64,
+      mimeType: files[i].type,
+    }))
+    const imageDataUrls = converted.map((c) => c.dataUrl)
+
+    // For subsequent turns, store a text stand-in so history stays text-only
+    const geminiText =
+      files.length > 0
+        ? `[Sent ${files.length} image${files.length > 1 ? 's' : ''}]${text ? ' ' + text : ''}`
+        : undefined
+
+    const userMsg: Message = {
+      id: nextId(),
+      role: 'user',
+      text,
+      ...(imageDataUrls.length > 0 ? { imageDataUrls, geminiText } : {}),
+    }
     const withUser = [...messages, userMsg]
     setMessages(withUser)
     setLoading(true)
@@ -436,11 +456,13 @@ export default function Chat() {
         role: m.role === 'user' ? ('user' as const) : ('model' as const),
         text: m.geminiText ?? m.text,
       })),
-      { role: 'user', text },
     ]
 
     try {
-      const meal = await sendMessage(history)
+      const meal =
+        imageAttachments.length > 0
+          ? await sendMessageWithImages(history, imageAttachments, text)
+          : await sendMessage([...history, { role: 'user', text }])
       update(meal)
 
       const hasComponents = meal.components.length > 0
@@ -529,97 +551,6 @@ export default function Chat() {
         text: 'Sorry, something went wrong. Please try again.',
       }
       const withError = [...withUser, errorMsg]
-      setMessages(withError)
-      void persistMessages(withError)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // ── Photo / OCR ────────────────────────────────────────────────────────────
-
-  async function handlePhoto(file: File) {
-    if (loading) return
-    setLoading(true)
-
-    try {
-      const { base64, dataUrl } = await readFileAsBase64(file)
-
-      const userMsg: Message = {
-        id: nextId(),
-        role: 'user',
-        text: '',
-        imageDataUrl: dataUrl,
-      }
-      const withUser = [...messages, userMsg]
-      setMessages(withUser)
-
-      const extracted = await ocrImage(base64, file.type)
-
-      // If Gemini couldn't read a single macro, the scan failed — don't
-      // pollute context with "? kcal, ?g protein…" noise.
-      const allNull =
-        extracted.calories == null &&
-        extracted.protein_g == null &&
-        extracted.fat_g == null &&
-        extracted.carbs_g == null
-
-      if (allNull) {
-        const errorMsg: Message = {
-          id: nextId(),
-          role: 'assistant',
-          text: "I couldn't read any nutrition values from that image. Try a clearer, straight-on photo of the label.",
-        }
-        const withError = [...withUser, errorMsg]
-        setMessages(withError)
-        void persistMessages(withError)
-        return
-      }
-
-      update({
-        components: [],
-        totals: {
-          calories: extracted.calories ?? 0,
-          protein_g: extracted.protein_g ?? 0,
-          fat_g: extracted.fat_g ?? 0,
-          carbs_g: extracted.carbs_g ?? 0,
-          fiber_g: extracted.fiber_g ?? 0,
-          sugar_g: extracted.sugar_g ?? 0,
-        },
-        message: '',
-      })
-
-      // Use the product name extracted by OCR; fall back to generic label
-      const labelName = extracted.suggested_name ?? 'scanned label'
-
-      // Add to context tray — name updates to the saved name when user saves to library
-      const ocrKey = `ocr-${nextId()}`
-      addToContext({
-        key: ocrKey,
-        name: extracted.suggested_name ?? 'Scanned label',
-        macros: extracted,
-        origin: 'scanned',
-      })
-
-      const assistantMsg: Message = {
-        id: nextId(),
-        role: 'assistant',
-        text: 'Here are the nutrition facts I found:',
-        geminiText: macroSummary(labelName, extracted),
-        ocrTotals: extracted,
-        ocrImageUrl: dataUrl,
-        rules,
-      }
-      const withAssistant = [...withUser, assistantMsg]
-      setMessages(withAssistant)
-      void persistMessages(withAssistant)
-    } catch {
-      const errorMsg: Message = {
-        id: nextId(),
-        role: 'assistant',
-        text: 'Sorry, I could not read that nutrition label. Please try a clearer photo.',
-      }
-      const withError = [...messages, errorMsg]
       setMessages(withError)
       void persistMessages(withError)
     } finally {
@@ -721,7 +652,6 @@ export default function Chat() {
       />
       <ChatInput
         onSend={handleSend}
-        onPhoto={handlePhoto}
         onLibraryOpen={() => setLibraryOpen(true)}
         disabled={loading}
       />
