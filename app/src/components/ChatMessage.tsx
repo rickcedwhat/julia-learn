@@ -23,7 +23,9 @@ export interface Message {
     totals: WorkingMealTotals
   }
   logged?: boolean
-  /** base64 data URL for an image the user attached */
+  /** base64 data URLs for images the user attached (new multi-image field) */
+  imageDataUrls?: string[]
+  /** @deprecated use imageDataUrls — kept for backward compat with stored sessions */
   imageDataUrl?: string
   /** OCR result to show as a MacroCard (nullable fields) */
   ocrTotals?: OcrTotals
@@ -62,14 +64,23 @@ export default function ChatMessage({ message, onLogged, onLabelSaved, onLogMeal
 
   return (
     <div className={`flex flex-col gap-2 ${isUser ? 'items-end' : 'items-start'}`}>
-      {/* Image preview (user-attached photo) */}
-      {message.imageDataUrl && (
-        <img
-          src={message.imageDataUrl}
-          alt="Nutrition label"
-          className="max-h-64 max-w-[80%] rounded-xl border border-gray-200 shadow-sm object-contain"
-        />
-      )}
+      {/* Image previews (user-attached photos) */}
+      {(() => {
+        const urls = message.imageDataUrls ?? (message.imageDataUrl ? [message.imageDataUrl] : [])
+        if (urls.length === 0) return null
+        return (
+          <div className={`flex gap-2 flex-wrap ${isUser ? 'justify-end' : 'justify-start'} max-w-[80%]`}>
+            {urls.map((url, i) => (
+              <img
+                key={i}
+                src={url}
+                alt={`Attachment ${i + 1}`}
+                className="max-h-48 max-w-[48%] rounded-xl border border-gray-200 shadow-sm object-contain"
+              />
+            ))}
+          </div>
+        )
+      })()}
 
       {/* Text bubble — only render if there's text */}
       {message.text && (
