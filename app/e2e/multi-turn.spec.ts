@@ -63,12 +63,13 @@ test.describe('Multi-turn meal accumulation', () => {
     await textarea.fill('Orange chicken from Panda Express')
     await page.getByRole('button', { name: 'Send' }).click()
     await expect(page.getByText('Meal totals')).toBeVisible({ timeout: 10000 })
-    await expect(page.getByText('490')).toBeVisible()
+    // exact: true avoids strict-mode violation — mock message text also contains the number
+    await expect(page.getByText('490.0 kcal', { exact: true })).toBeVisible()
 
     // Turn 2 — add broccoli; total should grow
     await textarea.fill('also a side of broccoli')
     await page.getByRole('button', { name: 'Send' }).click()
-    await expect(page.getByText('570')).toBeVisible({ timeout: 10000 })
+    await expect(page.getByText('570.0 kcal', { exact: true })).toBeVisible({ timeout: 10000 })
   })
 
   test('second Gemini call includes structured meal JSON from first turn', async ({ page }) => {
@@ -104,7 +105,7 @@ test.describe('Multi-turn meal accumulation', () => {
 
     await textarea.fill('also a side of broccoli')
     await page.getByRole('button', { name: 'Send' }).click()
-    await expect(page.getByText('570')).toBeVisible({ timeout: 10000 })
+    await expect(page.getByText('570.0 kcal', { exact: true })).toBeVisible({ timeout: 10000 })
 
     // Verify the second request carried the first meal's full JSON in history
     type Content = { role: string; parts: Array<{ text: string }> }
