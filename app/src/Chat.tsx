@@ -469,10 +469,18 @@ export default function Chat() {
       const widgetTotals =
         hasComponents && meal.totals.calories > 0 ? meal.totals : workingTotalsSnapshot
 
+      // Pass the full meal JSON back as geminiText so the next turn sees the
+      // structured component list in history — prevents state loss when Gemini
+      // tries to accumulate across turns (e.g. adding broccoli to orange chicken).
+      const mealGeminiText = hasComponents
+        ? JSON.stringify({ components: meal.components, totals: meal.totals, suggested_name: meal.suggested_name })
+        : undefined
+
       const assistantMsg: Message = {
         id: nextId(),
         role: 'assistant',
         text: meal.message,
+        geminiText: mealGeminiText,
         rules,
         ...(meal.ready_to_log && hasComponents
           ? {
