@@ -61,7 +61,7 @@ test.describe('Chat meal tracking', () => {
 
     const input = page.locator('textarea').last()
     await input.fill('I had 200g of grilled chicken and 100g of brown rice')
-    await input.press('Enter')
+    await page.getByRole('button', { name: 'Send' }).click()
 
     // Wait for macro card
     await expect(page.getByText('Meal totals')).toBeVisible({ timeout: 10000 })
@@ -74,7 +74,7 @@ test.describe('Chat meal tracking', () => {
 
     const input = page.locator('textarea').last()
     await input.fill('I had 200g of grilled chicken and 100g of brown rice')
-    await input.press('Enter')
+    await page.getByRole('button', { name: 'Send' }).click()
 
     await expect(page.getByText('Meal totals')).toBeVisible({ timeout: 10000 })
     // High protein meal should show at least one pass badge
@@ -106,7 +106,7 @@ test.describe('#36 Log meal via chat', () => {
 
     const input = page.locator('textarea').last()
     await input.fill("200g chicken, 100g rice — that's everything")
-    await input.press('Enter')
+    await page.getByRole('button', { name: 'Send' }).click()
 
     // SaveWidget should appear
     await expect(page.getByText('Log this meal?')).toBeVisible({ timeout: 10000 })
@@ -135,7 +135,7 @@ test.describe('#36 Log meal via chat', () => {
 
     const input = page.locator('textarea').last()
     await input.fill("200g chicken, 100g rice — that's everything")
-    await input.press('Enter')
+    await page.getByRole('button', { name: 'Send' }).click()
 
     await expect(page.getByText('Log this meal?')).toBeVisible({ timeout: 10000 })
 
@@ -160,7 +160,7 @@ test.describe('#36 Log meal via chat', () => {
 
     const input = page.locator('textarea').last()
     await input.fill("200g chicken, 100g rice — that's everything")
-    await input.press('Enter')
+    await page.getByRole('button', { name: 'Send' }).click()
 
     await expect(page.getByText('Log this meal?')).toBeVisible({ timeout: 10000 })
 
