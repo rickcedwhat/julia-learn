@@ -1,7 +1,8 @@
 import { test, expect, type Route } from '@playwright/test'
 
 const GEMINI_URL = '**/generativelanguage.googleapis.com/**'
-const SUPABASE_URL = '**/supabase.co/**'
+// Build from env so the mock pattern matches whatever Supabase URL the app uses
+const SUPABASE_URL = `${process.env.VITE_SUPABASE_URL ?? 'https://placeholder.supabase.co'}/**`
 
 // ── Mock payloads ─────────────────────────────────────────────────────────────
 
@@ -46,11 +47,11 @@ function makeGeminiHandler() {
 }
 
 /**
- * Default Supabase handler:
+ * Default Supabase handler — never calls route.continue() to avoid network
+ * errors against placeholder URLs.
  *   GET  /labels → [] (no existing label)
  *   POST /labels → [{ id: 'test-label-id' }] (insert success)
- *   Other writes  → empty success
- *   Other reads   → continue
+ *   Everything else (auth, other tables) → {} empty success
  */
 async function defaultSupabaseHandler(route: Route) {
   const method = route.request().method()
@@ -64,10 +65,8 @@ async function defaultSupabaseHandler(route: Route) {
       contentType: 'application/json',
       body: JSON.stringify([{ id: 'test-label-id' }]),
     })
-  } else if (['POST', 'PATCH', 'DELETE'].includes(method)) {
-    await route.fulfill({ status: 201, contentType: 'application/json', body: '[]' })
   } else {
-    await route.continue()
+    await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' })
   }
 }
 
@@ -136,7 +135,7 @@ test.describe('Vision label flow', () => {
           body: JSON.stringify([{ id: 'new-label-id' }]),
         })
       } else {
-        await route.continue()
+        await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' })
       }
     })
 
