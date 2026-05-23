@@ -1,5 +1,4 @@
 import { test, expect, type Route } from '@playwright/test'
-import path from 'path'
 
 const GEMINI_URL = '**/generativelanguage.googleapis.com/**'
 const SUPABASE_URL = '**/supabase.co/**'
@@ -72,7 +71,7 @@ async function defaultSupabaseHandler(route: Route) {
   }
 }
 
-const TEST_IMAGE = path.join(__dirname, '../src/assets/test-labels/black-beans.jpg')
+const TEST_IMAGE = new URL('../src/assets/test-labels/black-beans.jpg', import.meta.url).pathname
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
