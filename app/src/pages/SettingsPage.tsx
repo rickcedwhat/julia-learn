@@ -317,6 +317,8 @@ export default function SettingsPage() {
             />
           </>
         )}
+
+        <p className="text-xs text-gray-400 text-center pt-2">v{__APP_VERSION__}</p>
       </div>
     </div>
   )
