@@ -12,7 +12,7 @@ import type { ImageAttachment } from '@/lib/gemini'
 import { supabase } from '@/lib/supabase'
 import type { Message, BatchDerivation } from '@/components/ChatMessage'
 import type { ContextLabel } from '@/components/ContextTray'
-import type { ChatMessage as GeminiMessage, OcrTotals, WorkingMealTotals, WorkingMealComponent } from '@/lib/gemini'
+import type { ChatMessage as GeminiMessage, OcrTotals, WorkingMealTotals } from '@/lib/gemini'
 
 let idCounter = 0
 function nextId() {
@@ -53,14 +53,6 @@ function macroSummary(
     `${r(t.carbs_g)}g carbs, ${r(t.fiber_g)}g fiber, ${r(t.sugar_g)}g sugar. ` +
     `Use these exact values when the user describes how much of this they ate.`
   )
-}
-
-/** Derive a readable meal name from components when Gemini hasn't suggested one yet. */
-function deriveMealName(components: WorkingMealComponent[]): string {
-  if (components.length === 0) return ''
-  const names = components.map((c) => c.name)
-  if (names.length <= 3) return names.join(', ')
-  return `${names.slice(0, 2).join(', ')} + ${names.length - 2} more`
 }
 
 /** Strip image data URLs before persisting — they're too large for jsonb. */
@@ -206,7 +198,7 @@ export default function Chat() {
       role: 'assistant',
       text: '',
       saveWidget: {
-        suggestedName: workingMeal.suggested_name ?? deriveMealName(workingMeal.components),
+        suggestedName: workingMeal.suggested_name ?? '',
         totals: workingMeal.totals,
       },
       rules,
