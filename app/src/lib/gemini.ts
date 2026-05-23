@@ -56,6 +56,11 @@ MEAL STATE: Your components array IS the authoritative record of the meal. Never
 
 TOTALS: must always be numbers, never null. If a macro is unknown for a component, use your best estimate. When summing, treat any unknown value as 0. The six totals fields must always be numeric.`
 
+export interface ImageAttachment {
+  base64: string
+  mimeType: string
+}
+
 export async function sendMessage(history: ChatMessage[]): Promise<WorkingMeal> {
   const key = import.meta.env.VITE_GEMINI_API_KEY
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`
@@ -84,6 +89,51 @@ export async function sendMessage(history: ChatMessage[]): Promise<WorkingMeal> 
   const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim()
   const parsed = JSON.parse(cleaned) as WorkingMeal
   return parsed
+}
+
+/**
+ * Send a message with one or more attached images to Gemini vision.
+ * Returns the same WorkingMeal shape as sendMessage — images are processed
+ * inline (nutrition labels read exactly; unlabeled food estimated).
+ */
+export async function sendMessageWithImages(
+  history: ChatMessage[],
+  images: ImageAttachment[],
+  userText?: string,
+): Promise<WorkingMeal> {
+  const key = import.meta.env.VITE_GEMINI_API_KEY
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`
+
+  type Part = { text: string } | { inline_data: { mime_type: string; data: string } }
+  const currentParts: Part[] = []
+  if (userText?.trim()) currentParts.push({ text: userText.trim() })
+  for (const img of images) {
+    currentParts.push({ inline_data: { mime_type: img.mimeType, data: img.base64 } })
+  }
+
+  const contents = [
+    ...history.map((msg) => ({
+      role: msg.role,
+      parts: [{ text: msg.text }] as Part[],
+    })),
+    { role: 'user' as const, parts: currentParts },
+  ]
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
+      contents,
+    }),
+  })
+
+  if (!res.ok) throw new Error(`Gemini API error: HTTP ${res.status}`)
+
+  const data = await res.json()
+  const text: string = data.candidates[0].content.parts[0].text
+  const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim()
+  return JSON.parse(cleaned) as WorkingMeal
 }
 
 // ── OCR ─────────────────────────────────────────────────────────────────────

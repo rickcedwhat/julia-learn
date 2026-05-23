@@ -9,12 +9,17 @@ interface Label {
   origin: 'ai_estimated' | 'verified_label' | 'user_generated'
   calories: number | null
   protein_g: number | null
+  meta_tags: string[]
 }
 
 interface Props {
   open: boolean
   onClose: () => void
   onSelect: (labelId: string, labelName: string) => void
+  /** Current meal component names — used to rank relevant labels to the top. */
+  mealComponentNames?: string[]
+  /** IDs of labels already in the context tray — hidden from the list. */
+  contextLabelIds?: string[]
 }
 
 const ORIGIN_BADGE: Record<Label['origin'], { label: string; className: string }> = {
@@ -23,7 +28,27 @@ const ORIGIN_BADGE: Record<Label['origin'], { label: string; className: string }
   user_generated: { label: 'Recipe',  className: 'bg-green-100 text-green-800' },
 }
 
-export default function LabelSearchPanel({ open, onClose, onSelect }: Props) {
+function tokenize(text: string): string[] {
+  return text.toLowerCase().split(/\W+/).filter((t) => t.length > 2)
+}
+
+function relevanceScore(label: Label, mealTokens: Set<string>): number {
+  if (mealTokens.size === 0) return 0
+  const labelTokens = tokenize([label.name, ...label.meta_tags].join(' '))
+  let score = 0
+  for (const t of labelTokens) {
+    if (mealTokens.has(t)) score++
+  }
+  return score
+}
+
+export default function LabelSearchPanel({
+  open,
+  onClose,
+  onSelect,
+  mealComponentNames = [],
+  contextLabelIds = [],
+}: Props) {
   const { user } = useAuth()
   const [labels, setLabels] = useState<Label[]>([])
   const [query, setQuery] = useState('')
@@ -34,7 +59,7 @@ export default function LabelSearchPanel({ open, onClose, onSelect }: Props) {
     void (async () => {
       const { data } = await supabase
         .from('labels')
-        .select('id, name, origin, calories, protein_g')
+        .select('id, name, origin, calories, protein_g, meta_tags')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
       if (!cancelled) setLabels((data as Label[]) ?? [])
@@ -48,14 +73,30 @@ export default function LabelSearchPanel({ open, onClose, onSelect }: Props) {
     if (!open) setQuery('')
   }, [open])
 
+  const contextIdSet = useMemo(() => new Set(contextLabelIds), [contextLabelIds])
+
+  // Remove already-in-context labels, then sort by relevance to current meal
+  const mealTokens = useMemo(
+    () => new Set(tokenize(mealComponentNames.join(' '))),
+    [mealComponentNames],
+  )
+
+  const available = useMemo(() => {
+    const filtered = labels.filter((l) => !contextIdSet.has(l.id))
+    if (mealTokens.size === 0) return filtered
+    return [...filtered].sort(
+      (a, b) => relevanceScore(b, mealTokens) - relevanceScore(a, mealTokens),
+    )
+  }, [labels, contextIdSet, mealTokens])
+
   const fuse = useMemo(
-    () => new Fuse(labels, { keys: ['name'], threshold: 0.4 }),
-    [labels],
+    () => new Fuse(available, { keys: ['name', 'meta_tags'], threshold: 0.4 }),
+    [available],
   )
 
   const results = useMemo(
-    () => (query.trim() ? fuse.search(query.trim()).map((r) => r.item) : labels),
-    [query, labels, fuse],
+    () => (query.trim() ? fuse.search(query.trim()).map((r) => r.item) : available),
+    [query, available, fuse],
   )
 
   if (!open) return null
