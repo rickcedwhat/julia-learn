@@ -1,8 +1,22 @@
-import { Link } from 'react-router-dom'
+import { NavLink } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 
 const AUTH_BYPASS = import.meta.env.VITE_AUTH_BYPASS === 'true'
+
+const NAV_LINKS = [
+  { to: '/', label: 'Chat', end: true },
+  { to: '/log', label: 'Log', end: false },
+  { to: '/library', label: 'Library', end: false },
+  { to: '/recipes', label: 'Recipes', end: false },
+  { to: '/settings', label: 'Settings', end: false },
+]
+
+function navClass({ isActive }: { isActive: boolean }) {
+  return `text-sm font-medium transition-colors ${
+    isActive ? 'text-gray-900 border-b-2 border-gray-900 pb-0.5' : 'text-gray-400 hover:text-gray-700'
+  }`
+}
 
 export function Header() {
   const { user } = useAuth()
@@ -11,19 +25,18 @@ export function Header() {
     supabase.auth.signOut()
   }
 
-  // In preview deployments (AUTH_BYPASS=true) there is no OAuth user,
-  // but we still want nav links visible.
   if (!user && !AUTH_BYPASS) return null
 
   return (
     <header className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-      <div className="flex items-center gap-4">
-        <Link to="/" className="font-semibold text-gray-800 hover:text-gray-600 transition-colors">Julia</Link>
-        <Link to="/log" className="text-sm text-gray-500 hover:text-gray-800 transition-colors">Log</Link>
-        <Link to="/library" className="text-sm text-gray-500 hover:text-gray-800 transition-colors">Library</Link>
-        <Link to="/recipes" className="text-sm text-gray-500 hover:text-gray-800 transition-colors">Recipes</Link>
-        <Link to="/settings" className="text-sm text-gray-500 hover:text-gray-800 transition-colors">Settings</Link>
-      </div>
+      <nav className="flex items-center gap-4">
+        <span className="font-semibold text-gray-800 mr-1">Julia</span>
+        {NAV_LINKS.map(({ to, label, end }) => (
+          <NavLink key={to} to={to} end={end} className={navClass}>
+            {label}
+          </NavLink>
+        ))}
+      </nav>
       {user && (
         <div className="flex items-center gap-3">
           {user.user_metadata?.avatar_url && (
@@ -36,7 +49,7 @@ export function Header() {
           <span className="text-sm text-gray-600 hidden sm:block">{user.email}</span>
           <button
             onClick={handleSignOut}
-            className="text-sm text-gray-500 hover:text-gray-800 transition-colors"
+            className="text-sm text-gray-400 hover:text-gray-700 transition-colors"
           >
             Sign out
           </button>
