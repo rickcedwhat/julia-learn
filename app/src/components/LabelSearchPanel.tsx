@@ -17,6 +17,8 @@ interface Props {
   open: boolean
   onClose: () => void
   onSelect: (labelId: string, labelName: string) => void
+  /** If provided, enables multi-select mode: called with all selected labels at once. */
+  onSelectMultiple?: (labels: Array<{ id: string; name: string }>) => void
   /** Current meal component names — used to rank relevant labels to the top. */
   mealComponentNames?: string[]
   /** IDs of labels already in the context tray — hidden from the list. */
@@ -47,12 +49,14 @@ export default function LabelSearchPanel({
   open,
   onClose,
   onSelect,
+  onSelectMultiple,
   mealComponentNames = [],
   contextLabelIds = [],
 }: Props) {
   const { user } = useAuth()
   const [labels, setLabels] = useState<Label[]>([])
   const [query, setQuery] = useState('')
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     if (!open || !user) return
@@ -69,10 +73,29 @@ export default function LabelSearchPanel({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, user?.id])
 
-  // Reset query when panel closes
+  // Reset query and selection when panel closes
   useEffect(() => {
-    if (!open) setQuery('')
+    if (!open) {
+      setQuery('')
+      setSelectedIds(new Set())
+    }
   }, [open])
+
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function handleAddSelected() {
+    if (!onSelectMultiple || selectedIds.size === 0) return
+    const selected = labels.filter((l) => selectedIds.has(l.id)).map((l) => ({ id: l.id, name: l.name }))
+    onSelectMultiple(selected)
+    onClose()
+  }
 
   const contextIdSet = useMemo(() => new Set(contextLabelIds), [contextLabelIds])
 
@@ -99,6 +122,8 @@ export default function LabelSearchPanel({
     () => (query.trim() ? fuse.search(query.trim()).map((r) => r.item) : available),
     [query, available, fuse],
   )
+
+  const multiSelect = !!onSelectMultiple
 
   if (!open) return null
 
@@ -140,13 +165,30 @@ export default function LabelSearchPanel({
               label: label.origin,
               className: 'bg-gray-100 text-gray-700',
             }
+            const isSelected = selectedIds.has(label.id)
             return (
               <button
                 key={label.id}
                 type="button"
-                onClick={() => { onSelect(label.id, label.name); onClose() }}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-gray-50 transition-colors"
+                onClick={() => {
+                  if (multiSelect) {
+                    toggleSelect(label.id)
+                  } else {
+                    onSelect(label.id, label.name)
+                    onClose()
+                  }
+                }}
+                className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors ${isSelected ? 'bg-blue-50' : 'hover:bg-gray-50'}`}
               >
+                {multiSelect && (
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => toggleSelect(label.id)}
+                    onClick={(e) => e.stopPropagation()}
+                    className="w-4 h-4 accent-blue-500 shrink-0"
+                  />
+                )}
                 <span
                   className={`text-xs font-medium px-2 py-0.5 rounded-full shrink-0 ${badge.className}`}
                 >
@@ -166,6 +208,20 @@ export default function LabelSearchPanel({
           })
         )}
       </div>
+
+      {/* Multi-select footer */}
+      {multiSelect && (
+        <div className="px-4 py-2 border-t border-gray-100">
+          <button
+            type="button"
+            disabled={selectedIds.size === 0}
+            onClick={handleAddSelected}
+            className="w-full text-sm font-medium bg-blue-500 hover:bg-blue-600 disabled:bg-blue-200 text-white rounded-lg px-4 py-2 transition-colors"
+          >
+            {selectedIds.size === 0 ? 'Select labels to add' : `Add ${selectedIds.size} to meal`}
+          </button>
+        </div>
+      )}
     </div>
   )
 }

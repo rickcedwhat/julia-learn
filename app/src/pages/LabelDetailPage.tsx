@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase'
 import MacroCard from '@/components/MacroCard'
 import TagChips from '@/components/TagChips'
 import type { OcrTotals } from '@/lib/gemini'
-import { inferMetaTags } from '@/lib/gemini'
+import { inferMetaTags, inferCategory, LABEL_CATEGORIES } from '@/lib/gemini'
 import type { Label } from '@/pages/LibraryPage'
 import type { TagKey } from '@/lib/tags'
 
@@ -43,6 +43,8 @@ export default function LabelDetailPage() {
   // Fix modal state
   const [fixOpen, setFixOpen] = useState(false)
   const [fixServingSize, setFixServingSize] = useState('')
+  const [fixCategory, setFixCategory] = useState('')
+  const [inferringCategory, setInferringCategory] = useState(false)
   const [fixingMeta, setFixingMeta] = useState(false)
   const [fixSaving, setFixSaving] = useState(false)
 
@@ -105,7 +107,16 @@ export default function LabelDetailPage() {
   function openFix() {
     if (!label) return
     setFixServingSize(label.serving_size ?? '')
+    setFixCategory(label.category ?? '')
     setFixOpen(true)
+  }
+
+  async function handleInferCategory() {
+    if (!label) return
+    setInferringCategory(true)
+    const cat = await inferCategory(label.name)
+    setInferringCategory(false)
+    if (cat) setFixCategory(cat)
   }
 
   async function handleRegenerateMetaTags() {
@@ -126,13 +137,14 @@ export default function LabelDetailPage() {
     if (!label) return
     setFixSaving(true)
     const trimmed = fixServingSize.trim() || null
+    const cat = (fixCategory as string) || null
     const { error: dbError } = await supabase
       .from('labels')
-      .update({ serving_size: trimmed })
+      .update({ serving_size: trimmed, category: cat })
       .eq('id', label.id)
     setFixSaving(false)
     if (!dbError) {
-      setLabel((prev) => prev ? { ...prev, serving_size: trimmed } : prev)
+      setLabel((prev) => prev ? { ...prev, serving_size: trimmed, category: cat as Label['category'] } : prev)
       setFixOpen(false)
     }
   }
@@ -171,7 +183,7 @@ export default function LabelDetailPage() {
     sugar_g:   label.sugar_g,
   }
 
-  const isIncomplete = !label.serving_size || label.meta_tags.length === 0
+  const isIncomplete = !label.serving_size || label.meta_tags.length === 0 || !label.category
 
   return (
     <div className="flex-1 overflow-y-auto">
@@ -209,9 +221,16 @@ export default function LabelDetailPage() {
             )}
             <span className="text-xs text-gray-400">{formatDate(label.created_at)}</span>
           </div>
-          {label.serving_size && (
-            <p className="text-sm text-gray-500">Serving: {label.serving_size}</p>
-          )}
+          <div className="flex items-center gap-2 flex-wrap">
+            {label.serving_size && (
+              <p className="text-sm text-gray-500">Serving: {label.serving_size}</p>
+            )}
+            {label.category && (
+              <span className="text-xs font-medium bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
+                {label.category}
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Source image thumbnail (only present for OCR-scanned labels) */}
@@ -333,6 +352,31 @@ export default function LabelDetailPage() {
                 placeholder='e.g. "4 pieces (140g)" or "1 cup (240ml)"'
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
+            </div>
+
+            {/* Category */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-gray-700">Category</label>
+                <button
+                  type="button"
+                  onClick={() => void handleInferCategory()}
+                  disabled={inferringCategory}
+                  className="text-xs text-blue-500 hover:text-blue-700 disabled:opacity-50"
+                >
+                  {inferringCategory ? 'Inferring…' : 'Auto-detect'}
+                </button>
+              </div>
+              <select
+                value={fixCategory}
+                onChange={(e) => setFixCategory(e.target.value)}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">— None —</option>
+                {LABEL_CATEGORIES.map((cat) => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
             </div>
 
             {/* Meta-tags */}
