@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import type { WorkingMealTotals } from '@/lib/gemini'
 import MacroCard from '@/components/MacroCard'
+import MealSearchPanel from '@/components/MealSearchPanel'
 import { useUserRules, evaluateRule } from '@/hooks/useUserRules'
 import type { UserRule } from '@/hooks/useUserRules'
 
@@ -257,6 +258,7 @@ export default function LogPage() {
   const [meals, setMeals] = useState<Meal[]>([])
   const [loading, setLoading] = useState(true)
   const [fetchError, setFetchError] = useState<string | null>(null)
+  const [searchOpen, setSearchOpen] = useState(false)
 
   async function fetchMeals() {
     if (!user) return
@@ -310,14 +312,27 @@ export default function LogPage() {
             </Link>
           )}
         </div>
-        <button
-          onClick={() => navigate(`/log/${offsetDate(activeDate, 1)}`)}
-          className="p-2 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
-          aria-label="Next day"
-        >
-          →
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setSearchOpen(true)}
+            className="p-2 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+            aria-label="Search past meals"
+            title="Search past meals"
+          >
+            🔍
+          </button>
+          <button
+            onClick={() => navigate(`/log/${offsetDate(activeDate, 1)}`)}
+            className="p-2 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+            aria-label="Next day"
+          >
+            →
+          </button>
+        </div>
       </div>
+
+      <MealSearchPanel open={searchOpen} onClose={() => setSearchOpen(false)} />
 
       <div className="px-4 py-4 space-y-3 max-w-2xl mx-auto">
         {fetchError && (

@@ -311,6 +311,48 @@ export default function Chat() {
       })()
     }
 
+    // ?meal=<id> → load past meal into context tray so user can riff on it
+    const mealId = searchParams.get('meal')
+    if (mealId) {
+      void (async () => {
+        const { data, error } = await supabase
+          .from('meals')
+          .select('name, meal_type, computed_macros')
+          .eq('id', mealId)
+          .single()
+        if (!error && data) {
+          const meal = data as {
+            name: string
+            meal_type: string
+            computed_macros: {
+              calories: number | null
+              protein_g: number | null
+              fat_g: number | null
+              carbs_g: number | null
+              fiber_g: number | null
+              sugar_g: number | null
+            }
+          }
+          addToContext({
+            key: `meal-${mealId}`,
+            id: undefined,
+            name: meal.name,
+            macros: {
+              calories:     meal.computed_macros.calories,
+              protein_g:    meal.computed_macros.protein_g,
+              fat_g:        meal.computed_macros.fat_g,
+              carbs_g:      meal.computed_macros.carbs_g,
+              fiber_g:      meal.computed_macros.fiber_g,
+              sugar_g:      meal.computed_macros.sugar_g,
+              serving_size: null,
+            },
+            origin: 'library',
+          })
+        }
+        setSearchParams({})
+      })()
+    }
+
     // ?batch=<id>&portionG=<g> → show MacroCard + add to context tray
     const batchId = searchParams.get('batch')
     const portionGStr = searchParams.get('portionG')
