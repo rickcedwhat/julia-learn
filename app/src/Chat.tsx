@@ -72,10 +72,41 @@ function buildContextPreamble(labels: ContextLabel[]): string {
   return `The following nutrition labels are loaded in context:\n${list}\n\nUse these values when the user mentions these foods.`
 }
 
+interface SessionSummary {
+  id: string
+  updated_at: string
+  preview: string
+}
+
+function sessionPreview(messages: Message[]): string {
+  const first = messages.find((m) => m.role === 'user')
+  if (!first?.text) return 'Empty chat'
+  return first.text.length > 60 ? first.text.slice(0, 60) + '…' : first.text
+}
+
+function groupByDay(sessions: SessionSummary[]): Array<{ day: string; items: SessionSummary[] }> {
+  const today = new Date().toDateString()
+  const yesterday = new Date(Date.now() - 864e5).toDateString()
+  const map = new Map<string, SessionSummary[]>()
+  for (const s of sessions) {
+    const d = new Date(s.updated_at)
+    let key: string
+    if (d.toDateString() === today) key = 'Today'
+    else if (d.toDateString() === yesterday) key = 'Yesterday'
+    else key = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    if (!map.has(key)) map.set(key, [])
+    map.get(key)!.push(s)
+  }
+  return Array.from(map.entries()).map(([day, items]) => ({ day, items }))
+}
+
 export default function Chat() {
   const [messages, setMessages] = useState<Message[]>([])
   const [loading, setLoading] = useState(false)
   const [libraryOpen, setLibraryOpen] = useState(false)
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  const [sessions, setSessions] = useState<SessionSummary[]>([])
+  const [sessionsLoading, setSessionsLoading] = useState(false)
   const [contextLabels, setContextLabels] = useState<ContextLabel[]>([])
   const [suggestions, setSuggestions] = useState<ContextLabel[]>([])
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -85,26 +116,7 @@ export default function Chat() {
   const { rules } = useUserRules()
   const { user } = useAuth()
 
-  // Load most recent chat session on mount (once user is known).
-  // If no session exists yet, leave sessionIdRef null — it gets created lazily
-  // on the first persistMessages call so we never write empty sessions.
-  useEffect(() => {
-    if (!user) return
-    void (async () => {
-      const { data } = await supabase
-        .from('chat_sessions')
-        .select('id, messages')
-        .eq('user_id', user.id)
-        .order('updated_at', { ascending: false })
-        .limit(1)
-
-      if (data?.[0]) {
-        sessionIdRef.current = data[0].id as string
-        setMessages(data[0].messages as Message[])
-      }
-      // No else — sessionIdRef stays null until the first message is sent.
-    })()
-  }, [user])
+  // No auto-load on mount — chat starts fresh; prior sessions accessible via drawer.
 
   async function persistMessages(msgs: Message[]) {
     if (!user) return
@@ -127,11 +139,48 @@ export default function Chat() {
   }
 
   function handleNewChat() {
-    // Just reset local state — don't write an empty row to the DB.
-    // The next message will create a fresh session lazily.
     sessionIdRef.current = null
     setMessages([])
     setSuggestions([])
+    setDrawerOpen(false)
+  }
+
+  async function openDrawer() {
+    setDrawerOpen(true)
+    if (!user) return
+    setSessionsLoading(true)
+    const { data } = await supabase
+      .from('chat_sessions')
+      .select('id, updated_at, messages')
+      .eq('user_id', user.id)
+      .order('updated_at', { ascending: false })
+      .limit(30)
+    setSessionsLoading(false)
+    if (data) {
+      setSessions(
+        (data as Array<{ id: string; updated_at: string; messages: Message[] }>).map((s) => ({
+          id: s.id,
+          updated_at: s.updated_at,
+          preview: sessionPreview(s.messages),
+        }))
+      )
+    }
+  }
+
+  function switchSession(session: SessionSummary) {
+    void (async () => {
+      const { data } = await supabase
+        .from('chat_sessions')
+        .select('id, messages')
+        .eq('id', session.id)
+        .single()
+      if (data) {
+        sessionIdRef.current = data.id as string
+        setMessages(data.messages as Message[])
+        setSuggestions([])
+      }
+      setDrawerOpen(false)
+    })()
   }
 
   function handleFlag() {
@@ -609,27 +658,94 @@ export default function Chat() {
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
+  const grouped = groupByDay(sessions)
+
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
-      {messages.length > 0 && (
-        <div className="flex items-center justify-end gap-3 px-4 pt-2">
-          <button
-            type="button"
-            onClick={handleFlag}
-            title="Report an issue"
-            className="text-xs text-amber-400 hover:text-amber-600 transition-colors"
-          >
-            ⚑ Report issue
-          </button>
-          <button
-            type="button"
-            onClick={handleNewChat}
-            className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
-          >
-            New chat
-          </button>
+      {/* Chat toolbar */}
+      <div className="flex items-center justify-end px-4 py-2 border-b border-gray-100">
+        <button
+          type="button"
+          onClick={openDrawer}
+          aria-label="Chat history"
+          className="text-gray-400 hover:text-gray-700 transition-colors p-1"
+        >
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+            <rect x="2" y="4" width="16" height="2" rx="1"/>
+            <rect x="2" y="9" width="16" height="2" rx="1"/>
+            <rect x="2" y="14" width="16" height="2" rx="1"/>
+          </svg>
+        </button>
+      </div>
+
+      {/* Chat history drawer */}
+      {drawerOpen && (
+        <div className="fixed inset-0 z-40 flex">
+          <div
+            className="absolute inset-0 bg-black/30"
+            onClick={() => setDrawerOpen(false)}
+          />
+          <div className="relative z-10 w-72 max-w-[85vw] bg-white h-full flex flex-col shadow-xl">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+              <span className="font-semibold text-gray-800 text-sm">Chats</span>
+              <button
+                type="button"
+                onClick={() => setDrawerOpen(false)}
+                className="text-gray-400 hover:text-gray-600 text-xl leading-none"
+              >
+                ×
+              </button>
+            </div>
+            <div className="p-3 border-b border-gray-100 space-y-1.5">
+              <button
+                type="button"
+                onClick={handleNewChat}
+                className="w-full text-sm font-medium bg-blue-500 hover:bg-blue-600 text-white rounded-lg px-3 py-2 transition-colors text-left"
+              >
+                + New chat
+              </button>
+              <button
+                type="button"
+                onClick={() => { handleFlag(); setDrawerOpen(false) }}
+                className="w-full text-sm text-amber-600 hover:text-amber-800 border border-amber-200 rounded-lg px-3 py-2 transition-colors text-left"
+              >
+                ⚑ Report issue
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              {sessionsLoading ? (
+                <p className="text-xs text-gray-400 text-center py-6">Loading…</p>
+              ) : grouped.length === 0 ? (
+                <p className="text-xs text-gray-400 text-center py-6">No previous chats.</p>
+              ) : (
+                grouped.map(({ day, items }) => (
+                  <div key={day}>
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-4 py-2">
+                      {day}
+                    </p>
+                    {items.map((s) => (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => switchSession(s)}
+                        className={`w-full text-left px-4 py-2.5 hover:bg-gray-50 transition-colors ${
+                          s.id === sessionIdRef.current ? 'bg-blue-50' : ''
+                        }`}
+                      >
+                        <p className="text-sm text-gray-800 truncate">{s.preview}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          {new Date(s.updated_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}
+                        </p>
+                      </button>
+                    ))}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
         </div>
       )}
+
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
         {messages.length === 0 && !loading && (
           <p className="text-center text-gray-400 text-sm mt-8">

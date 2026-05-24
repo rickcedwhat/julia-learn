@@ -199,20 +199,24 @@ function MealCard({ meal, onDelete }: MealCardProps) {
 
   return (
     <div className="border border-gray-200 rounded-xl overflow-hidden">
-      {/* Compact row */}
+      {/* Compact row — two-line layout so name never truncates */}
       <button
         onClick={() => setExpanded((v) => !v)}
-        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors"
+        className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors"
       >
-        <span className={`text-xs font-medium px-2 py-0.5 rounded-full shrink-0 ${className}`}>
-          {label}
-        </span>
-        <span className="text-xs text-gray-400 shrink-0">{formatTime(meal.logged_at)}</span>
-        <span className="flex-1 font-medium text-gray-900 truncate">{meal.name}</span>
-        <span className="text-sm text-gray-500 shrink-0">
-          {(m?.calories ?? 0).toFixed(0)} kcal &middot; {(m?.protein_g ?? 0).toFixed(1)} g protein
-        </span>
-        <span className="text-gray-400 text-sm ml-1">{expanded ? '▲' : '▼'}</span>
+        <div className="flex items-center gap-2">
+          <span className={`text-xs font-medium px-2 py-0.5 rounded-full shrink-0 ${className}`}>
+            {label}
+          </span>
+          <span className="text-xs text-gray-400">{formatTime(meal.logged_at)}</span>
+          <span className="ml-auto text-gray-400 text-sm">{expanded ? '▲' : '▼'}</span>
+        </div>
+        <div className="flex items-baseline justify-between gap-2 mt-1.5">
+          <span className="font-medium text-gray-900 text-sm leading-snug">{meal.name}</span>
+          <span className="text-xs text-gray-500 shrink-0">
+            {(m?.calories ?? 0).toFixed(0)} kcal &middot; {(m?.protein_g ?? 0).toFixed(1)}g P
+          </span>
+        </div>
       </button>
 
       {/* Expanded detail */}
