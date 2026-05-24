@@ -5,7 +5,7 @@ import { useAuth } from '@/hooks/useAuth'
 import type { UserRule } from '@/hooks/useUserRules'
 import { evaluateRule } from '@/hooks/useUserRules'
 import { computeMathTags, mergeTags } from '@/lib/tags'
-import { inferAiTags, inferMetaTags } from '@/lib/gemini'
+import { inferAiTags, inferMetaTags, inferCategory } from '@/lib/gemini'
 import TagChips from '@/components/TagChips'
 
 // ── Types & helpers ───────────────────────────────────────────────────────────
@@ -174,7 +174,7 @@ export default function MacroCard({ totals, origin, onSaved, onLogMeal, rules, d
   async function doInsert(trimmed: string, version: number) {
     setSaveState('saving')
     const mathTags = computeMathTags(totals)
-    const [aiTags, metaTags] = await Promise.all([
+    const [aiTags, metaTags, category] = await Promise.all([
       inferAiTags(trimmed, {
         calories: totals.calories ?? null,
         protein_g: totals.protein_g ?? null,
@@ -184,6 +184,7 @@ export default function MacroCard({ totals, origin, onSaved, onLogMeal, rules, d
         sugar_g: totals.sugar_g ?? null,
       }),
       inferMetaTags(trimmed),
+      inferCategory(trimmed),
     ])
     const tags = mergeTags(mathTags, aiTags)
     const storedImageUrl = user?.id ? await uploadImage(user.id) : null
@@ -206,6 +207,7 @@ export default function MacroCard({ totals, origin, onSaved, onLogMeal, rules, d
         version,
         image_url: storedImageUrl,
         serving_size: ocrTotals.serving_size ?? null,
+        category,
       })
       .select('id')
       .single()

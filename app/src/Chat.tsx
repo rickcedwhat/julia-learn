@@ -416,6 +416,45 @@ export default function Chat() {
     setLibraryOpen(false)
   }
 
+  async function handleLibrarySelectMultiple(selected: Array<{ id: string; name: string }>) {
+    const results = await Promise.all(
+      selected.map((s) =>
+        supabase.from('labels').select('*').eq('id', s.id).single()
+      )
+    )
+    for (let i = 0; i < results.length; i++) {
+      const { data, error } = results[i]
+      if (!error && data) {
+        const label = data as {
+          name: string
+          calories: number | null
+          protein_g: number | null
+          fat_g: number | null
+          carbs_g: number | null
+          fiber_g: number | null
+          sugar_g: number | null
+          serving_size: string | null
+        }
+        addToContext({
+          key: selected[i].id,
+          id: selected[i].id,
+          name: selected[i].name,
+          macros: {
+            calories:     label.calories,
+            protein_g:    label.protein_g,
+            fat_g:        label.fat_g,
+            carbs_g:      label.carbs_g,
+            fiber_g:      label.fiber_g,
+            sugar_g:      label.sugar_g,
+            serving_size: label.serving_size,
+          },
+          origin: 'library',
+        })
+      }
+    }
+    setLibraryOpen(false)
+  }
+
   // ── Chat send ──────────────────────────────────────────────────────────────
 
   async function handleSend(text: string, files: File[] = []) {
@@ -652,6 +691,7 @@ export default function Chat() {
         open={libraryOpen}
         onClose={() => setLibraryOpen(false)}
         onSelect={handleLibrarySelect}
+        onSelectMultiple={handleLibrarySelectMultiple}
         mealComponentNames={workingMeal.components.map((c) => c.name)}
         contextLabelIds={contextLabels.map((l) => l.id).filter((id): id is string => Boolean(id))}
       />

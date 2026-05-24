@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import Fuse from 'fuse.js'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
-import TagChips from '@/components/TagChips'
-import type { TagKey } from '@/lib/tags'
+import type { LabelCategory } from '@/lib/gemini'
+import { LABEL_CATEGORIES } from '@/lib/gemini'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -26,6 +26,7 @@ export interface Label {
   created_at: string
   image_url: string | null
   serving_size: string | null
+  category: LabelCategory | null
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -40,6 +41,8 @@ function fmt(val: number | null | undefined): string {
   return val == null ? '—' : val.toFixed(0)
 }
 
+const UNCATEGORIZED = 'Uncategorized'
+
 // ── Library Page ─────────────────────────────────────────────────────────────
 
 export default function LibraryPage() {
@@ -49,6 +52,7 @@ export default function LibraryPage() {
   const [labels, setLabels] = useState<Label[]>([])
   const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
 
   // #31 – manage mode state
   const [manageMode, setManageMode] = useState(false)
@@ -91,6 +95,28 @@ export default function LibraryPage() {
     if (!query.trim()) return labels
     return fuse.search(query.trim()).map((r) => r.item)
   }, [query, labels, fuse])
+
+  // Group labels by category (only when not searching)
+  const grouped = useMemo(() => {
+    if (query.trim()) return null
+    const order = [...LABEL_CATEGORIES, UNCATEGORIZED]
+    const map = new Map<string, Label[]>()
+    for (const label of labels) {
+      const key = label.category ?? UNCATEGORIZED
+      if (!map.has(key)) map.set(key, [])
+      map.get(key)!.push(label)
+    }
+    return order.filter((cat) => map.has(cat)).map((cat) => ({ cat, items: map.get(cat)! }))
+  }, [labels, query])
+
+  function toggleCategory(cat: string) {
+    setExpandedCategories((prev) => {
+      const next = new Set(prev)
+      if (next.has(cat)) next.delete(cat)
+      else next.add(cat)
+      return next
+    })
+  }
 
   function toggleSelect(id: string) {
     setSelectedIds((prev) => {
@@ -215,71 +241,38 @@ export default function LibraryPage() {
               </div>
             )
           })
-        ) : (
-          // ── Normal list rows ──────────────────────────────────────────────
-          filtered.map((label) => {
-            const badge = ORIGIN_BADGE[label.origin] ?? {
-              label: label.origin,
-              className: 'bg-gray-100 text-gray-700',
-            }
-            const isIncomplete = !label.serving_size || label.meta_tags.length === 0
+        ) : grouped ? (
+          // ── Grouped by category ───────────────────────────────────────────
+          grouped.map(({ cat, items }) => {
+            const isExpanded = expandedCategories.has(cat)
+            const PREVIEW = 3
+            const shown = isExpanded ? items : items.slice(0, PREVIEW)
             return (
-              <button
-                key={label.id}
-                onClick={() => navigate(`/library/${label.id}`)}
-                className="w-full flex items-center gap-3 px-4 py-3 border border-gray-200 rounded-xl text-left hover:bg-gray-50 transition-colors"
-              >
-                {/* Origin badge */}
-                <span
-                  className={`text-xs font-medium px-2 py-0.5 rounded-full shrink-0 ${badge.className}`}
-                >
-                  {badge.label}
-                </span>
-
-                {/* Name + serving + tags */}
-                <span className="flex-1 min-w-0">
-                  <span className="flex items-center gap-1.5">
-                    <span className="font-medium text-gray-900 truncate">{label.name}</span>
-                    {isIncomplete && (
-                      <span
-                        className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0"
-                        title="Incomplete data — tap to fix"
-                      />
-                    )}
-                  </span>
-                  {label.serving_size && (
-                    <span className="text-xs text-gray-400 truncate block">{label.serving_size}</span>
-                  )}
-                  {label.tags.length > 0 && (
-                    <TagChips tags={label.tags as TagKey[]} />
-                  )}
-                </span>
-
-                {/* Version badge (only when > 1) */}
-                {label.version > 1 && (
-                  <span className="text-xs font-medium text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded shrink-0">
-                    v{label.version}
-                  </span>
+              <div key={cat}>
+                <div className="flex items-center justify-between py-2 px-1">
+                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{cat}</span>
+                  <span className="text-xs text-gray-400">{items.length}</span>
+                </div>
+                {shown.map((label) => <LabelRow key={label.id} label={label} navigate={navigate} />)}
+                {items.length > PREVIEW && (
+                  <button
+                    type="button"
+                    onClick={() => toggleCategory(cat)}
+                    className="w-full text-xs text-blue-500 hover:text-blue-700 py-1.5 text-center transition-colors"
+                  >
+                    {isExpanded ? 'Show less' : `Show ${items.length - PREVIEW} more`}
+                  </button>
                 )}
-
-                {/* Macros summary */}
-                <span className="text-sm text-gray-500 shrink-0">
-                  {fmt(label.calories)} kcal &middot; {fmt(label.protein_g)} g protein
-                </span>
-
-                {/* Protected icon */}
-                {label.protected && (
-                  <span className="text-sm shrink-0" aria-label="Protected">🔒</span>
-                )}
-
-                <span className="text-gray-400 text-sm ml-1">›</span>
-              </button>
+              </div>
             )
           })
+        ) : (
+          // ── Flat search results ───────────────────────────────────────────
+          filtered.map((label) => <LabelRow key={label.id} label={label} navigate={navigate} />)
         )}
       </div>
 
-      {/* #31 – Sticky footer for manage mode */}
+      {/* Manage mode sticky footer */}
       {manageMode && (
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3 z-20">
           <div className="max-w-2xl mx-auto space-y-2">
@@ -333,5 +326,37 @@ export default function LibraryPage() {
         </div>
       )}
     </div>
+  )
+}
+
+// ── Label Row ─────────────────────────────────────────────────────────────────
+
+function LabelRow({ label, navigate }: { label: Label; navigate: ReturnType<typeof useNavigate> }) {
+  const badge = ORIGIN_BADGE[label.origin] ?? { label: label.origin, className: 'bg-gray-100 text-gray-700' }
+  return (
+    <button
+      type="button"
+      onClick={() => navigate(`/library/${label.id}`)}
+      className="w-full text-left border border-gray-200 rounded-xl px-4 py-3 hover:bg-gray-50 transition-colors"
+    >
+      <div className="flex items-start gap-2 mb-1">
+        <span className={`text-xs font-medium px-2 py-0.5 rounded-full shrink-0 mt-0.5 ${badge.className}`}>
+          {badge.label}
+        </span>
+        <span className="font-medium text-gray-900 text-sm leading-snug">{label.name}</span>
+        {label.protected && (
+          <span className="ml-auto text-xs font-medium bg-green-100 text-green-700 px-1.5 py-0.5 rounded shrink-0">
+            🔒
+          </span>
+        )}
+      </div>
+      <div className="flex items-center gap-3 text-xs text-gray-400 pl-0.5">
+        {label.serving_size && <span className="truncate max-w-[120px]">{label.serving_size}</span>}
+        <span>{fmt(label.calories)} kcal</span>
+        <span>P {fmt(label.protein_g)}g</span>
+        <span>C {fmt(label.carbs_g)}g</span>
+        <span>F {fmt(label.fat_g)}g</span>
+      </div>
+    </button>
   )
 }

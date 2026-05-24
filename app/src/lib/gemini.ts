@@ -358,3 +358,56 @@ Respond with ONLY a JSON array of strings.`
     return []
   }
 }
+
+// ── Category Inference ────────────────────────────────────────────────────────
+
+export const LABEL_CATEGORIES = [
+  'Meat & Poultry',
+  'Seafood',
+  'Dairy & Eggs',
+  'Grains & Bread',
+  'Snacks',
+  'Sweets & Desserts',
+  'Sauces & Condiments',
+  'Vegetables',
+  'Fruits',
+  'Beverages',
+  'Legumes & Beans',
+  'Prepared Meals',
+  'Other',
+] as const
+
+export type LabelCategory = typeof LABEL_CATEGORIES[number]
+
+/**
+ * Ask Gemini to assign a single category to a food item.
+ * Returns one of the LABEL_CATEGORIES strings, or null on failure.
+ * Fails silently — category is best-effort.
+ */
+export async function inferCategory(name: string): Promise<LabelCategory | null> {
+  const key = import.meta.env.VITE_GEMINI_API_KEY
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`
+
+  const prompt = `Classify this food item into exactly one category. Return ONLY the category string, nothing else.
+
+Categories: ${LABEL_CATEGORIES.join(', ')}
+
+Food: "${name}"
+
+Response must be exactly one of the category strings listed above.`
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      }),
+    })
+    const json = await res.json() as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> }
+    const raw = (json.candidates?.[0]?.content?.parts?.[0]?.text ?? '').trim()
+    return (LABEL_CATEGORIES as readonly string[]).includes(raw) ? raw as LabelCategory : null
+  } catch {
+    return null
+  }
+}
