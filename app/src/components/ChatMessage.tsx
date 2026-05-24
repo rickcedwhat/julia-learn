@@ -113,6 +113,7 @@ export default function ChatMessage({ message, onLogged, onLabelSaved, onLogMeal
           derivation={message.batchDerivation}
           onSaved={onLabelSaved}
           onLogMeal={onLogMeal ? () => onLogMeal(message.mealTotals!) : undefined}
+          imageUrl={message.ocrImageUrl}
         />
       )}
 
