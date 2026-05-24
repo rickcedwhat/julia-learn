@@ -236,7 +236,7 @@ export default function LibraryPage() {
                   {badge.label}
                 </span>
 
-                {/* Name + tags */}
+                {/* Name + serving + tags */}
                 <span className="flex-1 min-w-0">
                   <span className="flex items-center gap-1.5">
                     <span className="font-medium text-gray-900 truncate">{label.name}</span>
@@ -247,6 +247,9 @@ export default function LibraryPage() {
                       />
                     )}
                   </span>
+                  {label.serving_size && (
+                    <span className="text-xs text-gray-400 truncate block">{label.serving_size}</span>
+                  )}
                   {label.tags.length > 0 && (
                     <TagChips tags={label.tags as TagKey[]} />
                   )}

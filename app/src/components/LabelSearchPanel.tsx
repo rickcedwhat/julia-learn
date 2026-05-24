@@ -9,6 +9,7 @@ interface Label {
   origin: 'ai_estimated' | 'verified_label' | 'user_generated'
   calories: number | null
   protein_g: number | null
+  serving_size: string | null
   meta_tags: string[]
 }
 
@@ -59,7 +60,7 @@ export default function LabelSearchPanel({
     void (async () => {
       const { data } = await supabase
         .from('labels')
-        .select('id, name, origin, calories, protein_g, meta_tags')
+        .select('id, name, origin, calories, protein_g, serving_size, meta_tags')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
       if (!cancelled) setLabels((data as Label[]) ?? [])
@@ -151,8 +152,11 @@ export default function LabelSearchPanel({
                 >
                   {badge.label}
                 </span>
-                <span className="flex-1 text-sm font-medium text-gray-900 truncate">
-                  {label.name}
+                <span className="flex-1 min-w-0">
+                  <span className="text-sm font-medium text-gray-900 truncate block">{label.name}</span>
+                  {label.serving_size && (
+                    <span className="text-xs text-gray-400 truncate block">{label.serving_size}</span>
+                  )}
                 </span>
                 <span className="text-xs text-gray-400 shrink-0">
                   {label.calories ?? '—'} kcal · {label.protein_g ?? '—'} g

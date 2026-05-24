@@ -482,6 +482,8 @@ export default function Chat() {
         text: meal.message,
         geminiText: mealGeminiText,
         rules,
+        // Carry the first image through so MacroCard can upload it to storage on save
+        ...(imageDataUrls.length > 0 ? { ocrImageUrl: imageDataUrls[0] } : {}),
         ...(meal.ready_to_log && hasComponents
           ? {
               saveWidget: {
@@ -489,7 +491,7 @@ export default function Chat() {
                 totals: widgetTotals,
               },
             }
-          : { mealTotals: hasComponents ? meal.totals : undefined }),
+          : { mealTotals: hasComponents ? { ...meal.totals, serving_size: meal.serving_size ?? null } : undefined }),
       }
       const withAssistant = [...withUser, assistantMsg]
       setMessages(withAssistant)
