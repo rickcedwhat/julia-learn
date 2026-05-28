@@ -121,11 +121,12 @@ export default function Chat() {
   async function persistMessages(msgs: Message[]) {
     if (!user) return
     let sid = sessionIdRef.current
+    const preview = sessionPreview(msgs)
     if (!sid) {
       // Create the session row lazily on the first real message.
       const { data } = await supabase
         .from('chat_sessions')
-        .insert({ user_id: user.id, messages: [] })
+        .insert({ user_id: user.id, messages: [], preview })
         .select('id')
         .single()
       if (!data) return
@@ -134,7 +135,7 @@ export default function Chat() {
     }
     await supabase
       .from('chat_sessions')
-      .update({ messages: stripImages(msgs), updated_at: new Date().toISOString() })
+      .update({ messages: stripImages(msgs), updated_at: new Date().toISOString(), preview })
       .eq('id', sid)
   }
 
@@ -151,17 +152,17 @@ export default function Chat() {
     setSessionsLoading(true)
     const { data } = await supabase
       .from('chat_sessions')
-      .select('id, updated_at, messages')
+      .select('id, updated_at, preview')
       .eq('user_id', user.id)
       .order('updated_at', { ascending: false })
       .limit(30)
     setSessionsLoading(false)
     if (data) {
       setSessions(
-        (data as Array<{ id: string; updated_at: string; messages: Message[] }>).map((s) => ({
+        (data as Array<{ id: string; updated_at: string; preview: string | null }>).map((s) => ({
           id: s.id,
           updated_at: s.updated_at,
-          preview: sessionPreview(s.messages),
+          preview: s.preview ?? new Date(s.updated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
         }))
       )
     }
@@ -684,7 +685,8 @@ export default function Chat() {
       } else {
         setSuggestions([])
       }
-    } catch {
+    } catch (err) {
+      console.error('Chat send failed:', err)
       const errorMsg: Message = {
         id: nextId(),
         role: 'assistant',

@@ -64,11 +64,34 @@ PORTIONS FROM IMAGES: When the user sends photos, always estimate macros — nev
 - No label (restaurant food, home-cooked meal, packaged food without visible label): estimate from your knowledge of that food. Use standard database values for the restaurant/brand if recognizable, or typical values for the dish. State your assumptions in the message field (e.g. "Estimating Wendy's Double Stack at ~570 kcal based on published nutrition"). Set serving_size to null.
 Never output all-zero macros for a real food item. A best-effort estimate is always better than zeros.
 
-TOTALS: must always be the sum of all components. Recompute from scratch each turn — do not carry over previous totals. Every field must be a number, never null. If a macro is unknown, use your best estimate and treat it as 0 when summing.`
+TOTALS: must always be the sum of all components. Recompute from scratch each turn — do not carry over previous totals. Every field must be a number, never null. If a macro is unknown, use your best estimate and treat it as 0 when summing.
+
+IMPORTANT: All numeric values in the JSON must be pre-computed number literals. Never write arithmetic expressions like \`150 / 28 * 26\` — always calculate the result first and write only the final number (e.g. \`139.3\`).`
 
 export interface ImageAttachment {
   base64: string
   mimeType: string
+}
+
+/** Evaluate simple left-to-right arithmetic expressions embedded in JSON values.
+ *  Handles cases like `"calories": 150 / 28 * 26` which Gemini sometimes emits. */
+function resolveArithmetic(json: string): string {
+  return json.replace(
+    /(?<=:\s*)([\d.]+(?:\s*[+\-*/]\s*[\d.]+)+)(?=\s*[,\n}])/g,
+    (expr) => {
+      const tokens = expr.trim().split(/\s*([+\-*/])\s*/)
+      let result = parseFloat(tokens[0])
+      for (let i = 1; i < tokens.length - 1; i += 2) {
+        const op = tokens[i]
+        const operand = parseFloat(tokens[i + 1])
+        if (op === '*') result *= operand
+        else if (op === '/') result /= operand
+        else if (op === '+') result += operand
+        else if (op === '-') result -= operand
+      }
+      return String(Math.round(result * 100) / 100)
+    }
+  )
 }
 
 export async function sendMessage(history: ChatMessage[]): Promise<WorkingMeal> {
@@ -94,11 +117,19 @@ export async function sendMessage(history: ChatMessage[]): Promise<WorkingMeal> 
   }
 
   const data = await res.json()
+  if (!data.candidates?.length) {
+    console.error('Gemini returned no candidates:', JSON.stringify(data))
+    throw new Error(`Gemini returned no candidates: ${data.promptFeedback?.blockReason ?? 'unknown'}`)
+  }
   const text: string = data.candidates[0].content.parts[0].text
 
-  const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim()
-  const parsed = JSON.parse(cleaned) as WorkingMeal
-  return parsed
+  const cleaned = resolveArithmetic(text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim())
+  try {
+    return JSON.parse(cleaned) as WorkingMeal
+  } catch {
+    console.error('Gemini JSON parse failed. Raw response:', text)
+    throw new Error('Gemini response was not valid JSON')
+  }
 }
 
 /**
@@ -141,9 +172,18 @@ export async function sendMessageWithImages(
   if (!res.ok) throw new Error(`Gemini API error: HTTP ${res.status}`)
 
   const data = await res.json()
+  if (!data.candidates?.length) {
+    console.error('Gemini (vision) returned no candidates:', JSON.stringify(data))
+    throw new Error(`Gemini returned no candidates: ${data.promptFeedback?.blockReason ?? 'unknown'}`)
+  }
   const text: string = data.candidates[0].content.parts[0].text
-  const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim()
-  return JSON.parse(cleaned) as WorkingMeal
+  const cleaned = resolveArithmetic(text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim())
+  try {
+    return JSON.parse(cleaned) as WorkingMeal
+  } catch {
+    console.error('Gemini (vision) JSON parse failed. Raw response:', text)
+    throw new Error('Gemini response was not valid JSON')
+  }
 }
 
 // ── OCR ─────────────────────────────────────────────────────────────────────
