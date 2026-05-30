@@ -233,7 +233,7 @@ export default function Chat() {
       role: 'assistant',
       text: '',
       saveWidget: {
-        suggestedName: '',
+        suggestedName: workingMeal.suggested_name ?? '',
         totals: totals as WorkingMealTotals,
       },
       rules,
