@@ -37,6 +37,8 @@ export interface Message {
   batchDerivation?: BatchDerivation
   /** User-reported issue marker — renders as a timeline flag, not a chat bubble */
   flagged?: boolean
+  /** Exclude this message from the Gemini history — for UI-only messages like log confirmations */
+  skipGeminiHistory?: boolean
 }
 
 interface Props {
