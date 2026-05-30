@@ -192,6 +192,7 @@ export default function Chat() {
       role: 'assistant',
       text: `Issue reported at ${timeStr}`,
       flagged: true,
+      skipGeminiHistory: true,
     }
     const withFlag = [...messages, flagMsg]
     setMessages(withFlag)
@@ -453,6 +454,7 @@ export default function Chat() {
       id: nextId(),
       role: 'assistant',
       text: confirmationText,
+      skipGeminiHistory: true,
     }
     setMessages((prev) => [...prev, confirmMsg])
   }
@@ -583,10 +585,12 @@ export default function Chat() {
       ...(contextPreamble
         ? [{ role: 'model' as const, text: contextPreamble }]
         : []),
-      ...messages.map((m) => ({
-        role: m.role === 'user' ? ('user' as const) : ('model' as const),
-        text: m.geminiText ?? m.text,
-      })),
+      ...messages
+        .filter((m) => !m.skipGeminiHistory)
+        .map((m) => ({
+          role: m.role === 'user' ? ('user' as const) : ('model' as const),
+          text: m.geminiText ?? m.text,
+        })),
     ]
 
     try {
