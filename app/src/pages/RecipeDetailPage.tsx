@@ -10,6 +10,7 @@ interface Recipe {
   user_id: string
   name: string
   notes: string | null
+  ingredients: string | null
   created_at: string
 }
 
@@ -74,6 +75,12 @@ export default function RecipeDetailPage() {
   const [editNotes, setEditNotes] = useState('')
   const [savingNotes, setSavingNotes] = useState(false)
   const [notesError, setNotesError] = useState<string | null>(null)
+
+  // Inline edit state for ingredients
+  const [editingIngredients, setEditingIngredients] = useState(false)
+  const [editIngredients, setEditIngredients] = useState('')
+  const [savingIngredients, setSavingIngredients] = useState(false)
+  const [ingredientsError, setIngredientsError] = useState<string | null>(null)
 
   // Batches state
   const [batches, setBatches] = useState<Batch[]>([])
@@ -176,6 +183,23 @@ export default function RecipeDetailPage() {
     }
     setRecipe((prev) => (prev ? { ...prev, notes: editNotes.trim() || null } : prev))
     setEditingNotes(false)
+  }
+
+  async function handleSaveIngredients() {
+    if (!recipe) return
+    setSavingIngredients(true)
+    setIngredientsError(null)
+    const { error } = await supabase
+      .from('recipes')
+      .update({ ingredients: editIngredients.trim() || null })
+      .eq('id', recipe.id)
+    setSavingIngredients(false)
+    if (error) {
+      setIngredientsError(error.message)
+      return
+    }
+    setRecipe((prev) => (prev ? { ...prev, ingredients: editIngredients.trim() || null } : prev))
+    setEditingIngredients(false)
   }
 
   async function handleCreateBatch(e: React.FormEvent) {
@@ -381,6 +405,72 @@ export default function RecipeDetailPage() {
             </button>
           )}
         </div>
+
+        {/* Ingredients */}
+        <div className="space-y-1">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Standard Ingredients</p>
+          {editingIngredients ? (
+            <div className="space-y-2">
+              <textarea
+                value={editIngredients}
+                onChange={(e) => setEditIngredients(e.target.value)}
+                autoFocus
+                rows={6}
+                placeholder={'One ingredient per line, e.g.:\n3 lbs 99/1 ground turkey\n3 cans black beans\n544g sweet plantains\n2 packets taco seasoning'}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none font-mono"
+              />
+              {ingredientsError && <p className="text-xs text-red-600">{ingredientsError}</p>}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => void handleSaveIngredients()}
+                  disabled={savingIngredients}
+                  className="text-sm px-3 py-1.5 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white font-medium rounded-lg transition-colors"
+                >
+                  {savingIngredients ? 'Saving…' : 'Save'}
+                </button>
+                <button
+                  onClick={() => {
+                    setEditingIngredients(false)
+                    setIngredientsError(null)
+                  }}
+                  className="text-sm px-3 py-1.5 border border-gray-300 text-gray-700 hover:bg-gray-100 font-medium rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => {
+                setEditIngredients(recipe.ingredients ?? '')
+                setEditingIngredients(true)
+                setIngredientsError(null)
+              }}
+              className="group w-full text-left"
+              title="Click to edit ingredients"
+            >
+              {recipe.ingredients ? (
+                <pre className="text-sm text-gray-700 group-hover:text-gray-500 transition-colors whitespace-pre-wrap font-sans">
+                  {recipe.ingredients}
+                </pre>
+              ) : (
+                <p className="text-sm text-gray-400 group-hover:text-gray-500 transition-colors italic">
+                  No ingredients yet. Click to add…
+                </p>
+              )}
+            </button>
+          )}
+        </div>
+
+        {/* Start Batch in Chat */}
+        {recipe.ingredients && (
+          <button
+            onClick={() => navigate(`/?recipe=${recipe.id}`)}
+            className="w-full text-sm bg-green-500 hover:bg-green-600 text-white font-medium rounded-xl px-4 py-2.5 transition-colors"
+          >
+            Start Batch in Chat →
+          </button>
+        )}
 
         {/* Batches section */}
         <div className="space-y-3">
