@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/hooks/useAuth'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -62,6 +63,7 @@ const MACRO_KEYS: (keyof BatchMacros)[] = [
 export default function BatchDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { user } = useAuth()
 
   const [batch, setBatch] = useState<Batch | null>(null)
   const [loading, setLoading] = useState(true)
@@ -81,6 +83,14 @@ export default function BatchDetailPage() {
 
   // Portion calculator
   const [portionG, setPortionG] = useState('')
+
+  // Create Serving Label
+  const [showLabelForm, setShowLabelForm] = useState(false)
+  const [labelName, setLabelName] = useState('')
+  const [labelServingG, setLabelServingG] = useState('')
+  const [savingLabel, setSavingLabel] = useState(false)
+  const [labelError, setLabelError] = useState<string | null>(null)
+  const [savedLabelId, setSavedLabelId] = useState<string | null>(null)
 
   // Inline edit: macros
   const [editingMacros, setEditingMacros] = useState(false)
@@ -181,6 +191,55 @@ export default function BatchDetailPage() {
     }
     setBatch((prev) => (prev ? { ...prev, total_macros: hasMacros ? macros : null } : prev))
     setEditingMacros(false)
+  }
+
+  async function handleCreateLabel(e: React.FormEvent) {
+    e.preventDefault()
+    if (!batch || !user) return
+    if (!labelName.trim()) {
+      setLabelError('Label name is required')
+      return
+    }
+    const servingG = parseFloat(labelServingG)
+    if (isNaN(servingG) || servingG <= 0) {
+      setLabelError('Enter a valid serving size')
+      return
+    }
+    if (!batch.total_weight_g || !batch.total_macros) {
+      setLabelError('Batch needs total weight and macros to create a label')
+      return
+    }
+    setSavingLabel(true)
+    setLabelError(null)
+
+    const scale = servingG / batch.total_weight_g
+    const sm = (v: number | null) => (v != null ? Math.round(v * scale * 10) / 10 : null)
+
+    const { data, error } = await supabase
+      .from('labels')
+      .insert({
+        user_id: user.id,
+        name: labelName.trim(),
+        origin: 'batch',
+        batch_id: batch.id,
+        serving_size: `${servingG}g`,
+        calories:  sm(batch.total_macros.calories),
+        protein_g: sm(batch.total_macros.protein_g),
+        fat_g:     sm(batch.total_macros.fat_g),
+        carbs_g:   sm(batch.total_macros.carbs_g),
+        fiber_g:   sm(batch.total_macros.fiber_g),
+        sugar_g:   sm(batch.total_macros.sugar_g),
+      })
+      .select('id')
+      .single()
+
+    setSavingLabel(false)
+    if (error) {
+      setLabelError(error.message)
+      return
+    }
+    setSavedLabelId((data as { id: string }).id)
+    setShowLabelForm(false)
   }
 
   function startEditMacros() {
@@ -485,6 +544,113 @@ export default function BatchDetailPage() {
                 Use in meal →
               </button>
             </div>
+          )}
+        </div>
+        {/* Create Serving Label */}
+        <div className="space-y-2">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+            Serving Label
+          </p>
+          {batch.total_weight_g == null || batch.total_macros == null ? (
+            <p className="text-xs text-gray-400 italic">
+              Set total weight and macros above to create a serving label.
+            </p>
+          ) : savedLabelId ? (
+            <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+              <span className="text-sm text-green-700 font-medium">Label saved to library!</span>
+              <a
+                href={`/library`}
+                className="text-sm text-green-600 hover:text-green-800 underline"
+              >
+                View in library →
+              </a>
+            </div>
+          ) : showLabelForm ? (
+            <form
+              onSubmit={(e) => void handleCreateLabel(e)}
+              className="border border-gray-200 rounded-xl p-4 space-y-3"
+            >
+              <input
+                type="text"
+                value={labelName}
+                onChange={(e) => setLabelName(e.target.value)}
+                placeholder="Label name (e.g. Turkey Maduro Beans Mix)"
+                autoFocus
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  value={labelServingG}
+                  onChange={(e) => setLabelServingG(e.target.value)}
+                  placeholder="Serving size"
+                  min="1"
+                  step="any"
+                  className="w-36 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <span className="text-sm text-gray-500">g per serving</span>
+              </div>
+
+              {/* Live preview of scaled macros */}
+              {(() => {
+                const g = parseFloat(labelServingG)
+                const valid = !isNaN(g) && g > 0
+                const scale = valid ? g / batch.total_weight_g! : null
+                const sv = (v: number | null) =>
+                  scale != null && v != null ? (v * scale).toFixed(1) : '—'
+                const m = batch.total_macros!
+                return valid ? (
+                  <div className="bg-gray-50 rounded-lg px-3 py-2 grid grid-cols-3 gap-x-4 gap-y-1 text-xs">
+                    {(
+                      [
+                        ['Cal', m.calories],
+                        ['Protein', m.protein_g],
+                        ['Fat', m.fat_g],
+                        ['Carbs', m.carbs_g],
+                        ['Fiber', m.fiber_g],
+                        ['Sugar', m.sugar_g],
+                      ] as [string, number | null][]
+                    ).map(([lbl, val]) => (
+                      <div key={lbl} className="flex justify-between">
+                        <span className="text-gray-400">{lbl}</span>
+                        <span className="font-medium text-gray-700">{sv(val)}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : null
+              })()}
+
+              {labelError && <p className="text-xs text-red-600">{labelError}</p>}
+              <div className="flex gap-2">
+                <button
+                  type="submit"
+                  disabled={savingLabel}
+                  className="flex-1 text-sm py-2 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white font-medium rounded-lg transition-colors"
+                >
+                  {savingLabel ? 'Saving…' : 'Save Label'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setShowLabelForm(false); setLabelError(null) }}
+                  className="flex-1 text-sm py-2 border border-gray-300 text-gray-700 hover:bg-gray-100 font-medium rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          ) : (
+            <button
+              onClick={() => {
+                // Pre-fill name from recipe if available
+                setLabelName(recipeName ? `${recipeName}` : batch.name)
+                setLabelServingG('')
+                setLabelError(null)
+                setShowLabelForm(true)
+              }}
+              className="w-full text-sm border-2 border-dashed border-gray-300 hover:border-blue-400 text-gray-500 hover:text-blue-600 rounded-xl px-4 py-3 transition-colors"
+            >
+              + Create serving label
+            </button>
           )}
         </div>
       </div>

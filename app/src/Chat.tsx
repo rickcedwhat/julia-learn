@@ -116,6 +116,21 @@ export default function Chat() {
   const { rules } = useUserRules()
   const { user } = useAuth()
 
+  // Recipe context — set when chat is opened from a recipe's "Start Batch" button
+  const [recipeContext, setRecipeContext] = useState<{
+    id: string
+    name: string
+    ingredients: string
+  } | null>(null)
+
+  // Save-as-batch form state
+  const [showBatchForm, setShowBatchForm] = useState(false)
+  const [batchFormName, setBatchFormName] = useState('')
+  const [batchFormWeight, setBatchFormWeight] = useState('')
+  const [savingBatch, setSavingBatch] = useState(false)
+  const [batchSaveError, setBatchSaveError] = useState<string | null>(null)
+  const [savedBatchId, setSavedBatchId] = useState<string | null>(null)
+
   // No auto-load on mount — chat starts fresh; prior sessions accessible via drawer.
 
   async function persistMessages(msgs: Message[]) {
@@ -439,6 +454,32 @@ export default function Chat() {
         })()
       }
     }
+    // ?recipe=<id> → pre-seed chat with recipe ingredients, ready to build a batch
+    const recipeId = searchParams.get('recipe')
+    if (recipeId) {
+      void (async () => {
+        const { data, error } = await supabase
+          .from('recipes')
+          .select('id, name, ingredients')
+          .eq('id', recipeId)
+          .single()
+
+        if (!error && data) {
+          const recipe = data as { id: string; name: string; ingredients: string | null }
+          if (recipe.ingredients) {
+            setRecipeContext({ id: recipe.id, name: recipe.name, ingredients: recipe.ingredients })
+            const introMsg: Message = {
+              id: nextId(),
+              role: 'assistant',
+              text: `Ready to build a batch for **${recipe.name}**.\n\nStandard ingredients:\n${recipe.ingredients}\n\nTell me the actual quantities you used (or "same as recipe" if nothing changed), and I'll calculate the macros.`,
+              geminiText: `Recipe context loaded: "${recipe.name}". Standard ingredients:\n${recipe.ingredients}\n\nWait for the user to confirm quantities before calculating macros.`,
+            }
+            setMessages([introMsg])
+          }
+        }
+        setSearchParams({})
+      })()
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -547,6 +588,48 @@ export default function Chat() {
       }
     }
     setLibraryOpen(false)
+  }
+
+  // ── Save as Batch ──────────────────────────────────────────────────────────
+
+  async function handleSaveBatch(e: React.FormEvent) {
+    e.preventDefault()
+    if (!user || !recipeContext) return
+    if (!batchFormName.trim()) {
+      setBatchSaveError('Batch name is required')
+      return
+    }
+    setSavingBatch(true)
+    setBatchSaveError(null)
+
+    const totalWeight = batchFormWeight !== '' ? parseFloat(batchFormWeight) : null
+    const t = workingMeal.totals
+    const { data, error } = await supabase
+      .from('batches')
+      .insert({
+        user_id: user.id,
+        recipe_id: recipeContext.id,
+        name: batchFormName.trim(),
+        total_weight_g: totalWeight,
+        total_macros: {
+          calories:  t.calories,
+          protein_g: t.protein_g,
+          fat_g:     t.fat_g,
+          carbs_g:   t.carbs_g,
+          fiber_g:   t.fiber_g,
+          sugar_g:   t.sugar_g,
+        },
+      })
+      .select('id')
+      .single()
+
+    setSavingBatch(false)
+    if (error) {
+      setBatchSaveError(error.message)
+      return
+    }
+    setSavedBatchId((data as { id: string }).id)
+    setShowBatchForm(false)
   }
 
   // ── Chat send ──────────────────────────────────────────────────────────────
@@ -818,6 +901,80 @@ export default function Chat() {
         )}
         <div ref={bottomRef} />
       </div>
+
+      {/* Save as Batch — shown when a recipe is loaded and there are meal components */}
+      {recipeContext && workingMeal.components.length > 0 && (
+        <div className="px-4 py-2 border-t border-gray-100 space-y-2">
+          {savedBatchId ? (
+            <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-4 py-2.5">
+              <span className="text-sm text-green-700 font-medium">Batch saved!</span>
+              <a
+                href={`/batches/${savedBatchId}`}
+                className="text-sm text-green-600 hover:text-green-800 underline"
+              >
+                View batch →
+              </a>
+            </div>
+          ) : showBatchForm ? (
+            <form
+              onSubmit={(e) => void handleSaveBatch(e)}
+              className="border border-gray-200 rounded-xl p-3 space-y-2 bg-gray-50"
+            >
+              <p className="text-xs font-semibold text-gray-600">Save as Batch</p>
+              <input
+                type="text"
+                value={batchFormName}
+                onChange={(e) => setBatchFormName(e.target.value)}
+                placeholder="Batch name"
+                autoFocus
+                className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+              />
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  value={batchFormWeight}
+                  onChange={(e) => setBatchFormWeight(e.target.value)}
+                  placeholder="Total weight (g) — optional"
+                  min="0"
+                  step="any"
+                  className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                />
+                <span className="text-xs text-gray-400 shrink-0">g</span>
+              </div>
+              {batchSaveError && <p className="text-xs text-red-600">{batchSaveError}</p>}
+              <div className="flex gap-2">
+                <button
+                  type="submit"
+                  disabled={savingBatch}
+                  className="flex-1 text-sm py-1.5 bg-green-500 hover:bg-green-600 disabled:opacity-50 text-white font-medium rounded-lg transition-colors"
+                >
+                  {savingBatch ? 'Saving…' : 'Save Batch'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setShowBatchForm(false); setBatchSaveError(null) }}
+                  className="flex-1 text-sm py-1.5 border border-gray-300 text-gray-700 hover:bg-gray-100 font-medium rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                setBatchFormName(recipeContext.name)
+                setBatchFormWeight('')
+                setShowBatchForm(true)
+              }}
+              disabled={loading}
+              className="w-full bg-green-500 hover:bg-green-600 disabled:bg-green-300 text-white font-medium rounded-xl px-4 py-2.5 text-sm transition-colors"
+            >
+              Save as Batch
+            </button>
+          )}
+        </div>
+      )}
 
       {workingMeal.components.length > 0 && !messages.some((m) => m.saveWidget && !m.logged) && (
         <div className="px-4 py-2 border-t border-gray-100">
