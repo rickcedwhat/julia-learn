@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
@@ -173,11 +173,39 @@ function buildExportLine(meal: Meal): string {
 interface MealCardProps {
   meal: Meal
   onDelete: (id: string) => void
+  onUpdate: () => void
 }
 
-function MealCard({ meal, onDelete }: MealCardProps) {
+function MealCard({ meal, onDelete, onUpdate }: MealCardProps) {
+  const navigate = useNavigate()
+  const { user } = useAuth()
+
   const [expanded, setExpanded] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [relogging, setRelogging] = useState(false)
+
+  // Edit state
+  const [editing, setEditing] = useState(false)
+  const [editName, setEditName] = useState('')
+  const [editMealType, setEditMealType] = useState<Meal['meal_type']>('lunch')
+  const [editTime, setEditTime] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
+
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  // Close menu on outside click
+  useEffect(() => {
+    if (!menuOpen) return
+    function handleClick(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [menuOpen])
 
   const { label, className } = MEAL_TYPE_STYLES[meal.meal_type] ?? {
     label: meal.meal_type,
@@ -189,55 +217,205 @@ function MealCard({ meal, onDelete }: MealCardProps) {
     const line = buildExportLine(meal)
     await navigator.clipboard.writeText(line)
     setCopied(true)
+    setMenuOpen(false)
     setTimeout(() => setCopied(false), 2000)
   }
 
   function handleDelete() {
+    setMenuOpen(false)
     if (window.confirm(`Delete "${meal.name}"? This cannot be undone.`)) {
       onDelete(meal.id)
     }
   }
 
+  async function handleRelog() {
+    if (!user) return
+    setMenuOpen(false)
+    setRelogging(true)
+    await supabase.from('meals').insert({
+      user_id: user.id,
+      name: meal.name,
+      meal_type: meal.meal_type,
+      computed_macros: meal.computed_macros,
+      logged_at: new Date().toISOString(),
+    })
+    setRelogging(false)
+    onUpdate()
+  }
+
+  function handleOpenInChat() {
+    setMenuOpen(false)
+    navigate(`/?meal=${meal.id}`)
+  }
+
+  function startEdit() {
+    setMenuOpen(false)
+    setExpanded(true)
+    setEditName(meal.name)
+    setEditMealType(meal.meal_type)
+    // Extract local HH:MM from logged_at
+    const d = new Date(meal.logged_at)
+    setEditTime(
+      `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+    )
+    setSaveError(null)
+    setEditing(true)
+  }
+
+  async function handleSaveEdit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!editName.trim()) { setSaveError('Name is required'); return }
+    setSaving(true)
+    setSaveError(null)
+
+    // Rebuild logged_at: keep the original date, swap in the new time
+    const orig = new Date(meal.logged_at)
+    const [hh, mm] = editTime.split(':').map(Number)
+    orig.setHours(hh, mm, 0, 0)
+
+    const { error } = await supabase
+      .from('meals')
+      .update({
+        name: editName.trim(),
+        meal_type: editMealType,
+        logged_at: orig.toISOString(),
+      })
+      .eq('id', meal.id)
+
+    setSaving(false)
+    if (error) { setSaveError(error.message); return }
+    setEditing(false)
+    onUpdate()
+  }
+
   return (
     <div className="border border-gray-200 rounded-xl overflow-hidden">
-      {/* Compact row — two-line layout so name never truncates */}
-      <button
-        onClick={() => setExpanded((v) => !v)}
-        className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors"
-      >
-        <div className="flex items-center gap-2">
-          <span className={`text-xs font-medium px-2 py-0.5 rounded-full shrink-0 ${className}`}>
-            {label}
-          </span>
-          <span className="text-xs text-gray-400">{formatTime(meal.logged_at)}</span>
-          <span className="ml-auto text-gray-400 text-sm">{expanded ? '▲' : '▼'}</span>
+      {/* Compact row */}
+      <div className="flex items-stretch">
+        <button
+          onClick={() => setExpanded((v) => !v)}
+          className="flex-1 px-4 py-3 text-left hover:bg-gray-50 transition-colors min-w-0"
+        >
+          <div className="flex items-center gap-2">
+            <span className={`text-xs font-medium px-2 py-0.5 rounded-full shrink-0 ${className}`}>
+              {label}
+            </span>
+            <span className="text-xs text-gray-400">{formatTime(meal.logged_at)}</span>
+            {relogging && <span className="text-xs text-blue-400 ml-1">Re-logging…</span>}
+          </div>
+          <div className="flex items-baseline justify-between gap-2 mt-1.5">
+            <span className="font-medium text-gray-900 text-sm leading-snug truncate">{meal.name}</span>
+            <span className="text-xs text-gray-500 shrink-0">
+              {(m?.calories ?? 0).toFixed(0)} kcal &middot; {(m?.protein_g ?? 0).toFixed(1)}g P
+            </span>
+          </div>
+        </button>
+
+        {/* ⋯ menu trigger */}
+        <div ref={menuRef} className="relative flex items-center pr-3">
+          <button
+            onClick={(e) => { e.stopPropagation(); setMenuOpen((v) => !v) }}
+            className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            aria-label="Meal actions"
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+              <circle cx="8" cy="2.5" r="1.5"/>
+              <circle cx="8" cy="8" r="1.5"/>
+              <circle cx="8" cy="13.5" r="1.5"/>
+            </svg>
+          </button>
+
+          {menuOpen && (
+            <div className="absolute right-0 top-full mt-1 w-44 bg-white border border-gray-200 rounded-xl shadow-lg z-20 py-1 overflow-hidden">
+              <button
+                onClick={() => void handleShare()}
+                className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                {copied ? '✓ Copied!' : 'Share'}
+              </button>
+              <button
+                onClick={handleOpenInChat}
+                className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Open in chat
+              </button>
+              <button
+                onClick={() => void handleRelog()}
+                className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Relog
+              </button>
+              <button
+                onClick={startEdit}
+                className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Edit
+              </button>
+              <div className="border-t border-gray-100 mt-1 pt-1">
+                <button
+                  onClick={handleDelete}
+                  className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          )}
         </div>
-        <div className="flex items-baseline justify-between gap-2 mt-1.5">
-          <span className="font-medium text-gray-900 text-sm leading-snug">{meal.name}</span>
-          <span className="text-xs text-gray-500 shrink-0">
-            {(m?.calories ?? 0).toFixed(0)} kcal &middot; {(m?.protein_g ?? 0).toFixed(1)}g P
-          </span>
-        </div>
-      </button>
+      </div>
 
       {/* Expanded detail */}
       {expanded && (
         <div className="px-4 pb-4 border-t border-gray-100 pt-3 space-y-3">
-          <MacroCard totals={m} />
-          <div className="flex gap-2">
-            <button
-              onClick={handleShare}
-              className="flex-1 text-sm py-1.5 px-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors text-gray-700"
-            >
-              {copied ? 'Copied!' : 'Share'}
-            </button>
-            <button
-              onClick={handleDelete}
-              className="text-sm py-1.5 px-3 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 transition-colors"
-            >
-              Delete
-            </button>
-          </div>
+          {editing ? (
+            <form onSubmit={(e) => void handleSaveEdit(e)} className="space-y-2">
+              <input
+                type="text"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                autoFocus
+                placeholder="Meal name"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <div className="flex gap-2">
+                <select
+                  value={editMealType}
+                  onChange={(e) => setEditMealType(e.target.value as Meal['meal_type'])}
+                  className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                >
+                  <option value="breakfast">Breakfast</option>
+                  <option value="lunch">Lunch</option>
+                  <option value="dinner">Dinner</option>
+                  <option value="snack">Snack</option>
+                </select>
+                <input
+                  type="time"
+                  value={editTime}
+                  onChange={(e) => setEditTime(e.target.value)}
+                  className="w-28 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              {saveError && <p className="text-xs text-red-600">{saveError}</p>}
+              <div className="flex gap-2">
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="flex-1 text-sm py-1.5 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white font-medium rounded-lg transition-colors"
+                >
+                  {saving ? 'Saving…' : 'Save'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setEditing(false); setSaveError(null) }}
+                  className="flex-1 text-sm py-1.5 border border-gray-300 text-gray-700 hover:bg-gray-100 font-medium rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          ) : (
+            <MacroCard totals={m} />
+          )}
         </div>
       )}
     </div>
@@ -352,7 +530,7 @@ export default function LogPage() {
         ) : (
           <>
             {meals.map((meal) => (
-              <MealCard key={meal.id} meal={meal} onDelete={handleDelete} />
+              <MealCard key={meal.id} meal={meal} onDelete={handleDelete} onUpdate={() => void fetchMeals()} />
             ))}
 
             {/* Daily totals */}
