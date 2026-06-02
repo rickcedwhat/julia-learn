@@ -96,7 +96,7 @@ function resolveArithmetic(json: string): string {
 
 export async function sendMessage(history: ChatMessage[]): Promise<WorkingMeal> {
   const key = import.meta.env.VITE_GEMINI_API_KEY
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`
 
   const contents = history.map((msg) => ({
     role: msg.role,
@@ -143,7 +143,7 @@ export async function sendMessageWithImages(
   userText?: string,
 ): Promise<WorkingMeal> {
   const key = import.meta.env.VITE_GEMINI_API_KEY
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`
 
   type Part = { text: string } | { inline_data: { mime_type: string; data: string } }
   const currentParts: Part[] = []
@@ -227,7 +227,7 @@ If a field is not visible or legible, use null. Do not guess.`
 
 export async function ocrImage(base64: string, mimeType: string): Promise<OcrTotals> {
   const key = import.meta.env.VITE_GEMINI_API_KEY
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`
 
   const res = await fetch(url, {
     method: 'POST',
@@ -273,7 +273,7 @@ export async function inferAiTags(
   }
 ): Promise<AiTagKey[]> {
   const key = import.meta.env.VITE_GEMINI_API_KEY
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`
 
   const prompt = `You are a nutrition classifier. Given a food item's name and macros, determine which of these tags apply. Respond with valid JSON only — an array of applicable tag keys from this list: ["sweet_tooth", "savory", "filling"]. Return an empty array if none apply.
 
@@ -319,7 +319,7 @@ export async function inferSuggestions(
   if (mealItems.length === 0 || availableLabels.length === 0) return []
 
   const key = import.meta.env.VITE_GEMINI_API_KEY
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`
 
   const prompt = `You are a meal tracking assistant. The user is building a meal that currently contains:
 ${mealItems.map((i) => `- ${i}`).join('\n')}
@@ -362,7 +362,7 @@ Respond with ONLY a JSON array of label names from the list above. Example: ["Gr
  */
 export async function inferMetaTags(name: string): Promise<string[]> {
   const key = import.meta.env.VITE_GEMINI_API_KEY
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`
 
   const prompt = `You are a food search indexer. Given a food product name, return a JSON array of 3–8 short search keywords that someone might type to find this item, even if they don't remember the exact brand or name.
 
@@ -426,7 +426,7 @@ export type LabelCategory = typeof LABEL_CATEGORIES[number]
  */
 export async function inferCategory(name: string): Promise<LabelCategory | null> {
   const key = import.meta.env.VITE_GEMINI_API_KEY
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`
 
   const prompt = `Classify this food item into exactly one category. Return ONLY the category string, nothing else.
 
