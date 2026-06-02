@@ -664,7 +664,7 @@ export default function Chat() {
     // Prepend loaded context labels as the first model turn so Gemini never
     // loses track of scanned/loaded nutrition data, even after many exchanges.
     const contextPreamble = buildContextPreamble(contextLabels)
-    const history: GeminiMessage[] = [
+    const rawHistory: GeminiMessage[] = [
       ...(contextPreamble
         ? [{ role: 'model' as const, text: contextPreamble }]
         : []),
@@ -675,6 +675,17 @@ export default function Chat() {
           text: m.geminiText ?? m.text,
         })),
     ]
+    // Gemini rejects consecutive same-role turns (e.g. preamble + batch card both
+    // being model turns). Merge any adjacent same-role entries into one.
+    const history = rawHistory.reduce<GeminiMessage[]>((acc, msg) => {
+      const prev = acc[acc.length - 1]
+      if (prev && prev.role === msg.role) {
+        acc[acc.length - 1] = { role: prev.role, text: prev.text + '\n\n' + msg.text }
+      } else {
+        acc.push(msg)
+      }
+      return acc
+    }, [])
 
     try {
       const meal =
