@@ -14,6 +14,7 @@ const ORIGIN_BADGE: Record<Label['origin'], { label: string; className: string }
   verified_label: { label: 'Scanned', className: 'bg-blue-100 text-blue-800' },
   ai_estimated:   { label: 'AI',      className: 'bg-purple-100 text-purple-800' },
   user_generated: { label: 'Recipe',  className: 'bg-green-100 text-green-800' },
+  batch:          { label: 'Batch',   className: 'bg-orange-100 text-orange-800' },
 }
 
 function formatDate(iso: string): string {
