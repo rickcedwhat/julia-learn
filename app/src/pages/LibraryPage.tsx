@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useRef, useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Fuse from 'fuse.js'
 import { supabase } from '@/lib/supabase'
@@ -12,7 +12,7 @@ export interface Label {
   id: string
   user_id: string
   name: string
-  origin: 'ai_estimated' | 'verified_label' | 'user_generated'
+  origin: 'ai_estimated' | 'verified_label' | 'user_generated' | 'batch'
   calories: number | null
   protein_g: number | null
   fat_g: number | null
@@ -35,6 +35,17 @@ const ORIGIN_BADGE: Record<Label['origin'], { label: string; className: string }
   verified_label: { label: 'Scanned', className: 'bg-blue-100 text-blue-800' },
   ai_estimated:   { label: 'AI',      className: 'bg-purple-100 text-purple-800' },
   user_generated: { label: 'Recipe',  className: 'bg-green-100 text-green-800' },
+  batch:          { label: 'Batch',   className: 'bg-orange-100 text-orange-800' },
+}
+
+type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack'
+
+function guessMealType(): MealType {
+  const h = new Date().getHours()
+  if (h < 11) return 'breakfast'
+  if (h < 15) return 'lunch'
+  if (h < 20) return 'dinner'
+  return 'snack'
 }
 
 function fmt(val: number | null | undefined): string {
@@ -253,7 +264,7 @@ export default function LibraryPage() {
                   <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{cat}</span>
                   <span className="text-xs text-gray-400">{items.length}</span>
                 </div>
-                {shown.map((label) => <LabelRow key={label.id} label={label} navigate={navigate} />)}
+                {shown.map((label) => <LabelRow key={label.id} label={label} navigate={navigate} onDelete={(id) => setLabels((prev) => prev.filter((l) => l.id !== id))} />)}
                 {items.length > PREVIEW && (
                   <button
                     type="button"
@@ -268,7 +279,7 @@ export default function LibraryPage() {
           })
         ) : (
           // ── Flat search results ───────────────────────────────────────────
-          filtered.map((label) => <LabelRow key={label.id} label={label} navigate={navigate} />)
+          filtered.map((label) => <LabelRow key={label.id} label={label} navigate={navigate} onDelete={(id) => setLabels((prev) => prev.filter((l) => l.id !== id))} />)
         )}
       </div>
 
@@ -331,32 +342,172 @@ export default function LibraryPage() {
 
 // ── Label Row ─────────────────────────────────────────────────────────────────
 
-function LabelRow({ label, navigate }: { label: Label; navigate: ReturnType<typeof useNavigate> }) {
+function LabelRow({
+  label,
+  navigate,
+  onDelete,
+}: {
+  label: Label
+  navigate: ReturnType<typeof useNavigate>
+  onDelete: (id: string) => void
+}) {
+  const { user } = useAuth()
   const badge = ORIGIN_BADGE[label.origin] ?? { label: label.origin, className: 'bg-gray-100 text-gray-700' }
+
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [showLogForm, setShowLogForm] = useState(false)
+  const [logMealType, setLogMealType] = useState<MealType>(guessMealType)
+  const [logging, setLogging] = useState(false)
+  const [loggedConfirm, setLoggedConfirm] = useState(false)
+
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!menuOpen) return
+    function handleClick(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [menuOpen])
+
+  async function handleLogMeal() {
+    if (!user) return
+    setLogging(true)
+    await supabase.from('meals').insert({
+      user_id: user.id,
+      name: label.name,
+      meal_type: logMealType,
+      logged_at: new Date().toISOString(),
+      computed_macros: {
+        calories:  label.calories  ?? 0,
+        protein_g: label.protein_g ?? 0,
+        fat_g:     label.fat_g     ?? 0,
+        carbs_g:   label.carbs_g   ?? 0,
+        fiber_g:   label.fiber_g   ?? 0,
+        sugar_g:   label.sugar_g   ?? 0,
+      },
+    })
+    setLogging(false)
+    setShowLogForm(false)
+    setLoggedConfirm(true)
+    setTimeout(() => setLoggedConfirm(false), 2500)
+  }
+
+  async function handleDelete() {
+    setMenuOpen(false)
+    if (window.confirm(`Delete "${label.name}"? This cannot be undone.`)) {
+      await supabase.from('labels').delete().eq('id', label.id)
+      onDelete(label.id)
+    }
+  }
+
   return (
-    <button
-      type="button"
-      onClick={() => navigate(`/library/${label.id}`)}
-      className="w-full text-left border border-gray-200 rounded-xl px-4 py-3 hover:bg-gray-50 transition-colors"
-    >
-      <div className="flex items-start gap-2 mb-1">
-        <span className={`text-xs font-medium px-2 py-0.5 rounded-full shrink-0 mt-0.5 ${badge.className}`}>
-          {badge.label}
-        </span>
-        <span className="font-medium text-gray-900 text-sm leading-snug">{label.name}</span>
-        {label.protected && (
-          <span className="ml-auto text-xs font-medium bg-green-100 text-green-700 px-1.5 py-0.5 rounded shrink-0">
-            🔒
-          </span>
-        )}
+    <div className="border border-gray-200 rounded-xl overflow-hidden">
+      <div className="flex items-stretch">
+        {/* Main tappable area → label detail */}
+        <button
+          type="button"
+          onClick={() => navigate(`/library/${label.id}`)}
+          className="flex-1 text-left px-4 py-3 hover:bg-gray-50 transition-colors min-w-0"
+        >
+          <div className="flex items-start gap-2 mb-1">
+            <span className={`text-xs font-medium px-2 py-0.5 rounded-full shrink-0 mt-0.5 ${badge.className}`}>
+              {badge.label}
+            </span>
+            <span className="font-medium text-gray-900 text-sm leading-snug">{label.name}</span>
+            {label.protected && (
+              <span className="ml-auto text-xs font-medium bg-green-100 text-green-700 px-1.5 py-0.5 rounded shrink-0">
+                🔒
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-3 text-xs text-gray-400">
+            {label.serving_size && <span className="truncate max-w-[120px]">{label.serving_size}</span>}
+            <span>{fmt(label.calories)} kcal</span>
+            <span>P {fmt(label.protein_g)}g</span>
+            <span>C {fmt(label.carbs_g)}g</span>
+            <span>F {fmt(label.fat_g)}g</span>
+          </div>
+          {loggedConfirm && (
+            <p className="text-xs text-green-600 mt-1 font-medium">✓ Logged!</p>
+          )}
+        </button>
+
+        {/* ⋯ menu */}
+        <div ref={menuRef} className="relative flex items-center pr-3">
+          <button
+            onClick={(e) => { e.stopPropagation(); setMenuOpen((v) => !v) }}
+            className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            aria-label="Label actions"
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+              <circle cx="8" cy="2.5" r="1.5"/>
+              <circle cx="8" cy="8" r="1.5"/>
+              <circle cx="8" cy="13.5" r="1.5"/>
+            </svg>
+          </button>
+
+          {menuOpen && (
+            <div className="absolute right-0 top-full mt-1 w-44 bg-white border border-gray-200 rounded-xl shadow-lg z-20 py-1 overflow-hidden">
+              <button
+                onClick={() => { setMenuOpen(false); setLogMealType(guessMealType()); setShowLogForm(true) }}
+                className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Log as meal
+              </button>
+              <button
+                onClick={() => { setMenuOpen(false); navigate(`/?label=${label.id}`) }}
+                className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Open in chat
+              </button>
+              {!label.protected && (
+                <>
+                  <div className="border-t border-gray-100 mt-1 pt-1" />
+                  <button
+                    onClick={() => void handleDelete()}
+                    className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                  >
+                    Delete
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+        </div>
       </div>
-      <div className="flex items-center gap-3 text-xs text-gray-400 pl-0.5">
-        {label.serving_size && <span className="truncate max-w-[120px]">{label.serving_size}</span>}
-        <span>{fmt(label.calories)} kcal</span>
-        <span>P {fmt(label.protein_g)}g</span>
-        <span>C {fmt(label.carbs_g)}g</span>
-        <span>F {fmt(label.fat_g)}g</span>
-      </div>
-    </button>
+
+      {/* Inline log-as-meal form */}
+      {showLogForm && (
+        <div className="border-t border-gray-100 px-4 py-3 bg-gray-50 flex items-center gap-2">
+          <select
+            value={logMealType}
+            onChange={(e) => setLogMealType(e.target.value as MealType)}
+            className="flex-1 border border-gray-300 rounded-lg px-2 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="breakfast">Breakfast</option>
+            <option value="lunch">Lunch</option>
+            <option value="dinner">Dinner</option>
+            <option value="snack">Snack</option>
+          </select>
+          <button
+            onClick={() => void handleLogMeal()}
+            disabled={logging}
+            className="text-sm px-3 py-1.5 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white font-medium rounded-lg transition-colors shrink-0"
+          >
+            {logging ? 'Logging…' : 'Log now'}
+          </button>
+          <button
+            onClick={() => setShowLogForm(false)}
+            className="text-sm px-2 py-1.5 text-gray-500 hover:text-gray-700 transition-colors shrink-0"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+    </div>
   )
 }
