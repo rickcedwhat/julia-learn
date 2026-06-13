@@ -987,7 +987,7 @@ export default function Chat() {
         </div>
       )}
 
-      {workingMeal.components.length > 0 && !messages.some((m) => m.saveWidget && !m.logged) && (
+      {workingMeal.components.length > 0 && !messages.some((m) => m.saveWidget) && (
         <div className="px-4 py-2 border-t border-gray-100">
           <button
             type="button"

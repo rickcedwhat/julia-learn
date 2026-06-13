@@ -21,10 +21,11 @@ function currentTimeHHMM(): string {
 }
 
 function suggestMealType(): MealType {
-  const hour = new Date().getHours()
-  if (hour >= 5 && hour < 11) return 'breakfast'
-  if (hour >= 11 && hour < 15) return 'lunch'
-  if (hour >= 15 && hour < 21) return 'dinner'
+  const now = new Date()
+  const t = now.getHours() * 60 + now.getMinutes()
+  if (t >= 9 * 60 && t < 12 * 60 + 30) return 'breakfast' // 9:00 – 12:30
+  if (t >= 12 * 60 + 30 && t < 18 * 60) return 'lunch'    // 12:30 – 18:00
+  if (t >= 18 * 60 && t < 23 * 60 + 30) return 'dinner'   // 18:00 – 23:30
   return 'snack'
 }
 
