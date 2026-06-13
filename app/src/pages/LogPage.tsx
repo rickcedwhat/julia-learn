@@ -190,6 +190,7 @@ function MealCard({ meal, onDelete, onUpdate }: MealCardProps) {
   const [editName, setEditName] = useState('')
   const [editMealType, setEditMealType] = useState<Meal['meal_type']>('lunch')
   const [editTime, setEditTime] = useState('')
+  const [editDate, setEditDate] = useState('')
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
 
@@ -253,10 +254,13 @@ function MealCard({ meal, onDelete, onUpdate }: MealCardProps) {
     setExpanded(true)
     setEditName(meal.name)
     setEditMealType(meal.meal_type)
-    // Extract local HH:MM from logged_at
     const d = new Date(meal.logged_at)
     setEditTime(
       `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+    )
+    // YYYY-MM-DD in local time
+    setEditDate(
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
     )
     setSaveError(null)
     setEditing(true)
@@ -268,17 +272,17 @@ function MealCard({ meal, onDelete, onUpdate }: MealCardProps) {
     setSaving(true)
     setSaveError(null)
 
-    // Rebuild logged_at: keep the original date, swap in the new time
-    const orig = new Date(meal.logged_at)
+    // Rebuild logged_at from the edited date + time (treated as local time)
     const [hh, mm] = editTime.split(':').map(Number)
-    orig.setHours(hh, mm, 0, 0)
+    const [yr, mo, dy] = editDate.split('-').map(Number)
+    const newDate = new Date(yr, mo - 1, dy, hh, mm, 0, 0)
 
     const { error } = await supabase
       .from('meals')
       .update({
         name: editName.trim(),
         meal_type: editMealType,
-        logged_at: orig.toISOString(),
+        logged_at: newDate.toISOString(),
       })
       .eq('id', meal.id)
 
@@ -289,7 +293,7 @@ function MealCard({ meal, onDelete, onUpdate }: MealCardProps) {
   }
 
   return (
-    <div className="border border-gray-200 rounded-xl overflow-hidden">
+    <div className="border border-gray-200 rounded-xl">
       {/* Compact row */}
       <div className="flex items-stretch">
         <button
@@ -388,6 +392,12 @@ function MealCard({ meal, onDelete, onUpdate }: MealCardProps) {
                   <option value="dinner">Dinner</option>
                   <option value="snack">Snack</option>
                 </select>
+                <input
+                  type="date"
+                  value={editDate}
+                  onChange={(e) => setEditDate(e.target.value)}
+                  className="w-36 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
                 <input
                   type="time"
                   value={editTime}
