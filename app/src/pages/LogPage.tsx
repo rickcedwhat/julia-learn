@@ -269,13 +269,16 @@ function MealCard({ meal, onDelete, onUpdate }: MealCardProps) {
   async function handleSaveEdit(e: React.FormEvent) {
     e.preventDefault()
     if (!editName.trim()) { setSaveError('Name is required'); return }
-    setSaving(true)
-    setSaveError(null)
 
-    // Rebuild logged_at from the edited date + time (treated as local time)
+    // Validate date + time inputs before building the Date
+    if (!editDate || !editTime) { setSaveError('Valid date and time are required'); return }
     const [hh, mm] = editTime.split(':').map(Number)
     const [yr, mo, dy] = editDate.split('-').map(Number)
     const newDate = new Date(yr, mo - 1, dy, hh, mm, 0, 0)
+    if (isNaN(newDate.getTime())) { setSaveError('Valid date and time are required'); return }
+
+    setSaving(true)
+    setSaveError(null)
 
     const { error } = await supabase
       .from('meals')
