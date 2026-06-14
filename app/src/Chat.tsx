@@ -159,6 +159,12 @@ export default function Chat() {
     setMessages([])
     setSuggestions([])
     setDrawerOpen(false)
+    setRecipeContext(null)
+    setShowBatchForm(false)
+    setBatchFormName('')
+    setBatchFormWeight('')
+    setBatchSaveError(null)
+    setSavedBatchId(null)
   }
 
   async function openDrawer() {
@@ -594,7 +600,7 @@ export default function Chat() {
 
   async function handleSaveBatch(e: React.FormEvent) {
     e.preventDefault()
-    if (!user || !recipeContext) return
+    if (!user) return
     if (!batchFormName.trim()) {
       setBatchSaveError('Batch name is required')
       return
@@ -608,7 +614,7 @@ export default function Chat() {
       .from('batches')
       .insert({
         user_id: user.id,
-        recipe_id: recipeContext.id,
+        recipe_id: recipeContext?.id ?? null,
         name: batchFormName.trim(),
         total_weight_g: totalWeight,
         total_macros: {
@@ -913,8 +919,8 @@ export default function Chat() {
         <div ref={bottomRef} />
       </div>
 
-      {/* Save as Batch — shown when a recipe is loaded and there are meal components */}
-      {recipeContext && workingMeal.components.length > 0 && (
+      {/* Save as Batch — available any time there are meal components */}
+      {workingMeal.components.length > 0 && (
         <div className="px-4 py-2 border-t border-gray-100 space-y-2">
           {savedBatchId ? (
             <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-4 py-2.5">
@@ -974,7 +980,7 @@ export default function Chat() {
             <button
               type="button"
               onClick={() => {
-                setBatchFormName(recipeContext.name)
+                setBatchFormName(recipeContext?.name ?? workingMeal.suggested_name ?? '')
                 setBatchFormWeight('')
                 setShowBatchForm(true)
               }}
