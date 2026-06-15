@@ -109,7 +109,7 @@ test.describe('Vision label flow', () => {
     await expect(nameInput).toBeVisible()
     await nameInput.fill('Black Beans')
 
-    await page.getByRole('button', { name: 'Save' }).click()
+    await page.getByRole('button', { name: 'Save', exact: true }).click()
 
     await expect(page.getByText('Saved as Black Beans!')).toBeVisible({ timeout: 8000 })
   })
@@ -147,7 +147,7 @@ test.describe('Vision label flow', () => {
 
     await page.getByText('Save to Library').click()
     await page.getByPlaceholder('Name this label…').fill('Black Beans')
-    await page.getByRole('button', { name: 'Save' }).click()
+    await page.getByRole('button', { name: 'Save', exact: true }).click()
 
     await expect(page.getByText(/already exists/)).toBeVisible({ timeout: 5000 })
     await expect(page.getByRole('button', { name: 'Save as new version' })).toBeVisible()
