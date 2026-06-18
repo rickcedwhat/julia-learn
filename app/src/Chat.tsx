@@ -111,6 +111,8 @@ export default function Chat() {
   const [suggestions, setSuggestions] = useState<ContextLabel[]>([])
   const bottomRef = useRef<HTMLDivElement>(null)
   const sessionIdRef = useRef<string | null>(null)
+  // Cache all-labels list so we only fetch it once per session, not on every response
+  const labelCacheRef = useRef<Array<{ id: string; name: string; calories: number | null; protein_g: number | null; fat_g: number | null; carbs_g: number | null; fiber_g: number | null; sugar_g: number | null; serving_size: string | null }> | null>(null)
   const { workingMeal, update } = useWorkingMeal()
   const [searchParams, setSearchParams] = useSearchParams()
   const { rules } = useUserRules()
@@ -148,17 +150,26 @@ export default function Chat() {
       sid = data.id as string
       sessionIdRef.current = sid
     }
+    // Cap stored messages to keep JSONB size bounded and reduce DB IO
+    const toStore = stripImages(msgs.slice(-40))
     await supabase
       .from('chat_sessions')
-      .update({ messages: stripImages(msgs), updated_at: new Date().toISOString(), preview })
+      .update({ messages: toStore, updated_at: new Date().toISOString(), preview })
       .eq('id', sid)
   }
 
   function handleNewChat() {
     sessionIdRef.current = null
+    labelCacheRef.current = null
     setMessages([])
     setSuggestions([])
     setDrawerOpen(false)
+    setRecipeContext(null)
+    setShowBatchForm(false)
+    setBatchFormName('')
+    setBatchFormWeight('')
+    setBatchSaveError(null)
+    setSavedBatchId(null)
   }
 
   async function openDrawer() {
@@ -594,7 +605,7 @@ export default function Chat() {
 
   async function handleSaveBatch(e: React.FormEvent) {
     e.preventDefault()
-    if (!user || !recipeContext) return
+    if (!user) return
     if (!batchFormName.trim()) {
       setBatchSaveError('Batch name is required')
       return
@@ -608,7 +619,7 @@ export default function Chat() {
       .from('batches')
       .insert({
         user_id: user.id,
-        recipe_id: recipeContext.id,
+        recipe_id: recipeContext?.id ?? null,
         name: batchFormName.trim(),
         total_weight_g: totalWeight,
         total_macros: {
@@ -732,23 +743,29 @@ export default function Chat() {
         setSuggestions([]) // clear stale chips immediately
         void (async () => {
           try {
-            const { data: labelRows } = await supabase
-              .from('labels')
-              .select('id, name, calories, protein_g, fat_g, carbs_g, fiber_g, sugar_g, serving_size')
-              .eq('user_id', user.id)
-              .order('name')
-
-            if (!labelRows || labelRows.length === 0) return
-
-            // Exclude labels already loaded in the context tray
-            const contextIds = new Set(contextLabels.map((l) => l.id ?? l.key))
             type LabelRow = {
               id: string; name: string
               calories: number | null; protein_g: number | null; fat_g: number | null
               carbs_g: number | null; fiber_g: number | null; sugar_g: number | null
               serving_size: string | null
             }
-            const candidates = (labelRows as LabelRow[]).filter((l) => !contextIds.has(l.id))
+
+            // Use cached label list — only fetch once per session to reduce DB IO
+            if (!labelCacheRef.current) {
+              const { data: labelRows } = await supabase
+                .from('labels')
+                .select('id, name, calories, protein_g, fat_g, carbs_g, fiber_g, sugar_g, serving_size')
+                .eq('user_id', user.id)
+                .order('name')
+              labelCacheRef.current = (labelRows ?? []) as LabelRow[]
+            }
+
+            const allLabels = labelCacheRef.current
+            if (!allLabels || allLabels.length === 0) return
+
+            // Exclude labels already loaded in the context tray
+            const contextIds = new Set(contextLabels.map((l) => l.id ?? l.key))
+            const candidates = allLabels.filter((l) => !contextIds.has(l.id))
             if (candidates.length === 0) return
 
             const suggested = await inferSuggestions(
@@ -913,8 +930,8 @@ export default function Chat() {
         <div ref={bottomRef} />
       </div>
 
-      {/* Save as Batch — shown when a recipe is loaded and there are meal components */}
-      {recipeContext && workingMeal.components.length > 0 && (
+      {/* Save as Batch — available any time there are meal components */}
+      {workingMeal.components.length > 0 && (
         <div className="px-4 py-2 border-t border-gray-100 space-y-2">
           {savedBatchId ? (
             <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-4 py-2.5">
@@ -974,7 +991,7 @@ export default function Chat() {
             <button
               type="button"
               onClick={() => {
-                setBatchFormName(recipeContext.name)
+                setBatchFormName(recipeContext?.name ?? workingMeal.suggested_name ?? '')
                 setBatchFormWeight('')
                 setShowBatchForm(true)
               }}

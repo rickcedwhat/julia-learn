@@ -13,7 +13,11 @@ export function useAuth(): AuthState {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    // Timeout so a slow/throttled Supabase project doesn't hang the app forever
+    const timeout = setTimeout(() => setLoading(false), 5000)
+
     supabase.auth.getSession().then(({ data }) => {
+      clearTimeout(timeout)
       setSession(data.session)
       setLoading(false)
     })
@@ -22,7 +26,10 @@ export function useAuth(): AuthState {
       setSession(session)
     })
 
-    return () => subscription.unsubscribe()
+    return () => {
+      clearTimeout(timeout)
+      subscription.unsubscribe()
+    }
   }, [])
 
   return { session, user: session?.user ?? null, loading }
